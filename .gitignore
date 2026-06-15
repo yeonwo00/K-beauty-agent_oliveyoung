@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*Zone.Identifier
+data/*.sqlite3
+data/올리브영 온라인몰.html
+data/올리브영 온라인몰_files/
+data/oliveyoung_snapshots/*.html

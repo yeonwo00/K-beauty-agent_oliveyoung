@@ -1,0 +1,152 @@
+from __future__ import annotations
+
+from dataclasses import asdict
+from typing import Any
+
+from .knowledge_base import normalize_token
+from .knowledge_base import find_evidence_for_ingredient
+from .localization import (
+    format_recommendation_text,
+    missing_label,
+    score_component_label,
+    term,
+    translate_caution,
+    translate_evidence,
+    translate_reason,
+)
+from .models import Product, ProductScore, Recommendation, SkinProfile
+
+
+def product_to_dict(product: Product) -> dict[str, Any]:
+    return {
+        "id": product.id,
+        "name": product.name,
+        "display_name_ko": product.display_name_ko,
+        "brand": product.brand,
+        "category": product.category,
+        "country": product.country,
+        "ingredients": list(product.ingredients),
+        "claims": list(product.claims),
+        "suited_skin_types": list(product.suited_skin_types),
+        "concerns": list(product.concerns),
+        "avoid_for": list(product.avoid_for),
+        "price_usd": product.price_usd,
+        "rating": product.rating,
+        "review_count": product.review_count,
+        "source_url": product.source_url,
+        "ingredient_source_url": product.ingredient_source_url,
+        "verified_at": product.verified_at,
+        "review_summary": product.review_summary,
+        "review_summary_en": product.review_summary_en,
+        "positive_reviews": list(product.positive_reviews),
+        "negative_reviews": list(product.negative_reviews),
+        "positive_reviews_en": list(product.positive_reviews_en),
+        "negative_reviews_en": list(product.negative_reviews_en),
+        "review_source_url": product.review_source_url,
+        "image_url": product.image_url,
+        "image_verified_source": product.image_verified_source,
+        "image_source_type": product.image_source_type,
+        "image_confidence": product.image_confidence,
+        "image_view_type": product.image_view_type,
+        "oliveyoung_url": product.oliveyoung_url,
+        "oliveyoung_price_krw": product.oliveyoung_price_krw,
+        "official_url": product.official_url,
+        "texture_tags": list(product.texture_tags),
+        "oliveyoung_verified_at": product.oliveyoung_verified_at,
+        "ingredient_explanations": ingredient_explanations(product.ingredients),
+    }
+
+
+def score_to_dict(score: ProductScore, language: str | None = "en") -> dict[str, Any]:
+    return {
+        "product": product_to_dict(score.product),
+        "score": round(score.score, 2),
+        "score_components": {key: round(value, 2) for key, value in score.score_components.items()},
+        "display_score_components": {
+            score_component_label(key, language): round(value, 2) for key, value in score.score_components.items()
+        },
+        "reasons": score.reasons,
+        "display_reasons": [translate_reason(reason, language) for reason in score.reasons],
+        "cautions": score.cautions,
+        "display_cautions": [translate_caution(caution, language) for caution in score.cautions],
+        "evidence": score.evidence,
+        "display_evidence": [translate_evidence(evidence, language) for evidence in score.evidence],
+        "matched_ingredients": score.matched_ingredients,
+        "display_matched_ingredients": [term(ingredient, language) for ingredient in score.matched_ingredients],
+        "missing_data": score.missing_data,
+        "display_missing_data": [missing_label(item, language) for item in score.missing_data],
+        "similar_products": [product_to_dict(product) for product in score.similar_products],
+    }
+
+
+def profile_to_public_dict(profile: SkinProfile) -> dict[str, Any]:
+    data = asdict(profile)
+    return data
+
+
+def ingredient_explanations(ingredients: tuple[str, ...] | list[str]) -> list[dict[str, Any]]:
+    explanations: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for ingredient in ingredients:
+        evidence = find_evidence_for_ingredient(ingredient)
+        if evidence is None or evidence.name in seen:
+            continue
+        seen.add(evidence.name)
+        explanations.append(
+            {
+                "name": evidence.name,
+                "label": ingredient,
+                "supports": list(evidence.supports),
+                "suitable_for": list(evidence.suitable_for),
+                "cautions": list(evidence.cautions),
+                "evidence_level": evidence.evidence_level,
+                "rationale": evidence.rationale,
+                "display_name_ko": term(evidence.name, "ko"),
+                "display_supports_ko": [term(value, "ko") for value in evidence.supports],
+                "display_suitable_for_ko": [term(value, "ko") for value in evidence.suitable_for],
+                "display_cautions_ko": [translate_caution(value, "ko") for value in evidence.cautions],
+                "display_rationale_ko": translate_evidence(f"{evidence.name}: {evidence.rationale}", "ko").split(": ", 1)[-1],
+            }
+        )
+    return explanations
+
+
+def recommendation_to_dict(
+    recommendation: Recommendation,
+    *,
+    recommendation_id: int | None = None,
+    grounded_explanation: str | None = None,
+    openai_status: str = "not_used",
+    language: str | None = "en",
+) -> dict[str, Any]:
+    return {
+        "recommendation_id": recommendation_id,
+        "decision": recommendation.decision,
+        "query": recommendation.query,
+        "profile": profile_to_public_dict(recommendation.profile),
+        "results": [score_to_dict(item, language) for item in recommendation.results],
+        "fallback_message": recommendation.fallback_message,
+        "review_summary": recommendation.review_summary,
+        "guardrails": recommendation.guardrails,
+        "grounded_explanation": grounded_explanation or format_recommendation_text(recommendation, language),
+        "openai_status": openai_status,
+    }
+
+
+def similarity_score(base: Product, candidate: Product) -> float:
+    if base.id == candidate.id:
+        return -1.0
+    score = 0.0
+    if normalize_token(base.category) == normalize_token(candidate.category):
+        score += 3.0
+    base_ingredients = {normalize_token(item) for item in base.ingredients}
+    candidate_ingredients = {normalize_token(item) for item in candidate.ingredients}
+    base_concerns = {normalize_token(item) for item in base.concerns}
+    candidate_concerns = {normalize_token(item) for item in candidate.concerns}
+    score += 1.5 * len(base_ingredients & candidate_ingredients)
+    score += 2.0 * len(base_concerns & candidate_concerns)
+    if normalize_token(base.brand) != normalize_token(candidate.brand):
+        score += 0.25
+    if candidate.rating:
+        score += min(0.5, max(0.0, (candidate.rating - 3.5) / 2.0))
+    return score

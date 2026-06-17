@@ -10,9 +10,9 @@
       integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="/static/styles.css?v=20260615-review-excerpts" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260615-recommendation-criteria" />
     <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script defer src="/static/app.js?v=20260615-review-excerpts"></script>
+    <script defer src="/static/app.js?v=20260615-recommendation-criteria"></script>
   </head>
   <body>
     <nav class="navbar navbar-expand-lg sticky-top app-nav">
@@ -155,10 +155,6 @@
             </fieldset>
 
             <div class="quiz-actions wide">
-              <label class="form-check form-switch">
-                <input id="useOpenAI" class="form-check-input" type="checkbox" />
-                <span class="form-check-label">OpenAI 설명 사용</span>
-              </label>
               <button class="primary" type="submit">
                 <i data-lucide="sparkles"></i>
                 <span>추천 받기</span>
@@ -175,14 +171,22 @@
             <h2>추천 제품과 선택 이유</h2>
           </div>
           <div id="status" class="status">퀴즈를 제출하면 3-5개의 추천 카드가 여기에 표시됩니다.</div>
-          <div id="profileView" class="profile-strip"></div>
-          <form id="followUpForm" class="follow-up hidden">
-            <input id="followUpQuery" class="form-control" placeholder="후속 조건 추가: 예) 나이아신아마이드 들어간 2만원 이하 제품" />
-            <button class="primary small" type="submit">
-              <i data-lucide="send"></i>
-              <span>반영</span>
-            </button>
-          </form>
+          <div class="criteria-panel">
+            <div class="criteria-header">
+              <span class="mini-label criteria-title">검색 기준</span>
+            </div>
+            <div id="profileView" class="profile-strip"></div>
+            <form id="followUpForm" class="follow-up hidden">
+              <input id="followUpQuery" class="form-control" placeholder="후속 조건 추가: 예) 나이아신아마이드 들어간 2만원 이하 제품" />
+              <button class="primary small" type="submit">
+                <i data-lucide="send"></i>
+                <span>반영</span>
+              </button>
+            </form>
+          </div>
+          <p id="recommendationGuide" class="recommendation-guide">
+            추천 카드는 적합성 점수 순으로 정렬되며, 카드 안의 중요 성분은 추천 근거에서 중요한 순서로 표시됩니다.
+          </p>
           <div id="results" class="product-grid"></div>
         </div>
       </section>

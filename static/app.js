@@ -20,6 +20,10 @@ const uiText = {
     requestFailed: "추천 요청에 실패했습니다.",
     complete: "추천 완료",
     followUpComplete: "후속 조건 반영",
+    resultCount: "추천 결과 {count}개",
+    followUpResultCount: "후속 조건을 반영한 추천 {count}개",
+    criteriaTitle: "검색 기준",
+    recommendationGuide: "추천 카드는 적합성 점수 순으로 정렬되며, 카드 안의 중요 성분은 추천 근거에서 중요한 순서로 표시됩니다.",
     reset: "세션이 초기화되었습니다.",
     noReason: "추천 이유 데이터가 아직 없습니다.",
     noReview: "리뷰 요약 데이터가 아직 없습니다.",
@@ -73,7 +77,6 @@ const uiText = {
     clearAll: "전체 삭제",
     compareSelected: "선택 제품 비교",
     budgetNone: "제한 없음",
-    statusPrefixOpenAI: "OpenAI",
   },
   en: {
     statusIdle: "Submit the quiz to see 3-5 recommendation cards here.",
@@ -83,6 +86,10 @@ const uiText = {
     requestFailed: "Recommendation request failed.",
     complete: "Recommendation complete",
     followUpComplete: "Follow-up applied",
+    resultCount: "{count} recommendations",
+    followUpResultCount: "{count} recommendations after follow-up",
+    criteriaTitle: "Search criteria",
+    recommendationGuide: "Recommendation cards are ordered by fit score. Key ingredients inside each card are shown in order of recommendation importance.",
     reset: "Session has been reset.",
     noReason: "No recommendation rationale yet.",
     noReview: "No review summary yet.",
@@ -136,7 +143,6 @@ const uiText = {
     clearAll: "Clear all",
     compareSelected: "Compare selected",
     budgetNone: "No limit",
-    statusPrefixOpenAI: "OpenAI",
   },
 };
 
@@ -387,6 +393,8 @@ function applyStaticLanguage() {
   setText("#routine .catalog-title .mini-label", en ? "All Products" : "전체 상품");
   setText("#routine .catalog-title h2", en ? "Choose products for your routine" : "루틴에 담을 제품을 선택하세요");
   setText("#status", text("statusIdle"));
+  setText(".criteria-title", text("criteriaTitle"));
+  setText("#recommendationGuide", text("recommendationGuide"));
   setText("#ingredientModalTitle", text("modalTitle"));
 
   setLegend(0, en ? "Skin type" : "피부 타입");
@@ -396,7 +404,6 @@ function applyStaticLanguage() {
   setLegend(4, en ? "Budget and allergies" : "예산과 알러지");
   setText("label[for='budget']", en ? "Max budget" : "최대 예산");
   setText(".text-field span", en ? "Allergy / ingredients to avoid" : "알러지/피해야 할 성분");
-  setText(".form-check-label", en ? "Use OpenAI explanation" : "OpenAI 설명 사용");
   setText("#quizForm button[type='submit'] span", en ? "Get recommendations" : "추천 받기");
   setText("#followUpForm button span", en ? "Apply" : "반영");
   setPlaceholder("#allergyInput", en ? "e.g. fragrance, snail, alcohol, hyaluronic acid" : "예: 향료, 달팽이, 알코올, 히알루론산");
@@ -598,7 +605,7 @@ async function submitRecommendation(isFollowUp, query) {
     body: JSON.stringify({
       query,
       limit: 5,
-      use_openai: document.querySelector("#useOpenAI").checked,
+      use_openai: false,
       language: state.lang,
     }),
   });
@@ -614,8 +621,8 @@ async function submitRecommendation(isFollowUp, query) {
   renderResults(data.results || []);
   document.querySelector("#followUpForm").classList.remove("hidden");
   document.querySelector("#followUpQuery").value = "";
-  const sourceStatus = data.product_source_status?.message ? ` | ${data.product_source_status.message}` : "";
-  setStatus(`${isFollowUp ? text("followUpComplete") : text("complete")} | ${(data.results || []).length} | ${text("statusPrefixOpenAI")}: ${data.openai_status}${sourceStatus}`);
+  const countText = text(isFollowUp ? "followUpResultCount" : "resultCount").replace("{count}", String((data.results || []).length));
+  setStatus(countText);
   document.querySelector("#recommendation").scrollIntoView({ behavior: "smooth", block: "start" });
   if (window.lucide) window.lucide.createIcons();
 }
@@ -669,6 +676,25 @@ function displayIngredients(ingredients, limit = 8) {
   return (ingredients || []).slice(0, limit).map(displayIngredient).join(", ");
 }
 
+function normalizeText(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9가-힣]+/g, " ").trim();
+}
+
+function orderedIngredientExplanations(product, matchedIngredients) {
+  const explanations = product.ingredient_explanations || [];
+  const priority = (matchedIngredients || []).map((item) => normalizeText(item));
+  return [...explanations].sort((left, right) => {
+    const leftIndex = priority.indexOf(normalizeText(left.name));
+    const rightIndex = priority.indexOf(normalizeText(right.name));
+    if (leftIndex !== -1 || rightIndex !== -1) {
+      if (leftIndex === -1) return 1;
+      if (rightIndex === -1) return -1;
+      return leftIndex - rightIndex;
+    }
+    return 0;
+  });
+}
+
 function renderResults(results) {
   const container = document.querySelector("#results");
   container.innerHTML = results.map(renderProductCard).join("");
@@ -685,8 +711,9 @@ function renderProductCard(item) {
   const isSaved = state.selections.saved_ids?.includes(product.id);
   const isCompare = state.selections.compare_ids?.includes(product.id);
   const reasons = item.display_reasons || item.reasons || [];
-  const matched = item.display_matched_ingredients || item.matched_ingredients || [];
-  const ingredientButtons = (product.ingredient_explanations || [])
+  const matchedRaw = item.matched_ingredients || [];
+  const matched = item.display_matched_ingredients || matchedRaw;
+  const ingredientButtons = orderedIngredientExplanations(product, matchedRaw)
     .slice(0, 6)
     .map(
       (ingredient) =>

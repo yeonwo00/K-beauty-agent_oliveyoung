@@ -246,7 +246,7 @@ class LiveProductDatabaseTest(unittest.TestCase):
         self.assertIn("function reviewExcerpts(product", app_js)
         self.assertIn("positive_reviews", app_js)
         self.assertIn("negative_reviews", app_js)
-        self.assertIn("20260615-review-excerpts", index_html)
+        self.assertIn("20260615-recommendation-criteria", index_html)
 
     def test_oliveyoung_snapshot_csv_is_first_live_source_and_uses_krw_budget(self) -> None:
         snapshot_csv = Path(self.tempdir.name) / "oliveyoung_snapshot.csv"

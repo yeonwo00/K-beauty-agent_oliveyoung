@@ -146,6 +146,11 @@ def compare_page() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.get("/profile")
+def profile_page() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
+
+
 @app.get("/routine")
 def routine_page() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")

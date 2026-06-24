@@ -408,7 +408,10 @@ class PersonalizedServiceUnitTest(unittest.TestCase):
         self.assertIn("resetCriteria", app_js)
         self.assertIn('addCurrentResultsToSelection("compare")', app_js)
         self.assertIn('addCurrentResultsToSelection("saved")', app_js)
-        self.assertIn('await fetch("/api/profile", { method: "DELETE" })', app_js)
+        self.assertIn('await apiJson("/api/profile", { method: "DELETE" })', app_js)
+        self.assertIn('const RENDER_API_BASE_URL = "https://k-beauty-recommendation-agent.onrender.com";', app_js)
+        self.assertIn('credentials: "include"', app_js)
+        self.assertNotIn("IS_STATIC_DEMO", app_js)
         self.assertIn("state.currentResults = data.results || []", app_js)
         self.assertIn("item.personalized_reason", app_js)
         self.assertIn("glowpick: text(\"glowpickImage\")", app_js)
@@ -507,6 +510,8 @@ class PersonalizedServiceApiTest(unittest.TestCase):
         os.environ["ADMIN_TOKEN"] = "test-admin-token"
         os.environ["SESSION_SECRET"] = "test-session-secret"
         os.environ["SECURE_COOKIES"] = "false"
+        os.environ["COOKIE_SAMESITE"] = "lax"
+        os.environ["CORS_ALLOW_ORIGINS"] = "https://yeonwo00.github.io"
         os.environ.pop("OPENAI_API_KEY", None)
         import k_beauty_agent.web as web
 
@@ -534,6 +539,30 @@ class PersonalizedServiceApiTest(unittest.TestCase):
         response = client.get("/api/session")
 
         self.assertIn("secure", response.headers["set-cookie"].lower())
+
+    def test_cross_origin_cookie_and_cors_for_github_pages(self) -> None:
+        os.environ["SECURE_COOKIES"] = "true"
+        os.environ["COOKIE_SAMESITE"] = "none"
+        self.web = importlib.reload(self.web)
+        from fastapi.testclient import TestClient
+
+        client = TestClient(self.web.app)
+        session = client.get("/api/session")
+        cookie = session.headers["set-cookie"].lower()
+        self.assertIn("samesite=none", cookie)
+        self.assertIn("secure", cookie)
+
+        preflight = client.options(
+            "/api/recommend",
+            headers={
+                "Origin": "https://yeonwo00.github.io",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type",
+            },
+        )
+        self.assertEqual(preflight.status_code, 200)
+        self.assertEqual(preflight.headers["access-control-allow-origin"], "https://yeonwo00.github.io")
+        self.assertEqual(preflight.headers["access-control-allow-credentials"], "true")
 
     def test_recommend_followup_feedback_and_openai_fallback(self) -> None:
         response = self.client.post(

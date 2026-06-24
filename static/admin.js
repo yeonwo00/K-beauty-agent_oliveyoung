@@ -1,3 +1,6 @@
+const RENDER_API_BASE_URL = "https://k-beauty-recommendation-agent.onrender.com";
+const API_BASE_URL = window.location.hostname.endsWith("github.io") ? RENDER_API_BASE_URL : "";
+
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelector("#load").addEventListener("click", loadMetrics);
   document.querySelector("#cleanup").addEventListener("click", cleanup);
@@ -15,7 +18,8 @@ async function cleanup() {
 
 async function adminFetch(url, options = {}) {
   const token = document.querySelector("#token").value;
-  const response = await fetch(url, {
+  const response = await fetch(`${API_BASE_URL}${url}`, {
+    credentials: "include",
     ...options,
     headers: { "x-admin-token": token, ...(options.headers || {}) },
   });

@@ -1,5 +1,6 @@
 const LANGUAGE_STORAGE_KEY = "kBeautyAgentLanguage";
-const IS_STATIC_DEMO = window.location.hostname.endsWith("github.io");
+const RENDER_API_BASE_URL = "https://k-beauty-recommendation-agent.onrender.com";
+const API_BASE_URL = window.location.hostname.endsWith("github.io") ? RENDER_API_BASE_URL : "";
 
 const state = {
   lang: readStoredLanguage(),
@@ -24,7 +25,7 @@ const uiText = {
     followUpComplete: "후속 조건 반영",
     resultCount: "추천 결과 {count}개",
     followUpResultCount: "후속 조건을 반영한 추천 {count}개",
-    staticDemoResultCount: "정적 데모 추천 결과 {count}개",
+    backendConnectionFailed: "백엔드 서버 연결에 실패했습니다. Render 서비스가 실행 중인지 확인해 주세요.",
     criteriaReset: "검색 기준을 초기화했습니다.",
     noCurrentResults: "먼저 추천 결과를 받아주세요.",
     allCompareAdded: "현재 추천 제품 {count}개를 비교에 추가했습니다.",
@@ -95,7 +96,7 @@ const uiText = {
     followUpComplete: "Follow-up applied",
     resultCount: "{count} recommendations",
     followUpResultCount: "{count} recommendations after follow-up",
-    staticDemoResultCount: "{count} static demo recommendations",
+    backendConnectionFailed: "Could not connect to the backend server. Please check that the Render service is running.",
     criteriaReset: "Search criteria have been reset.",
     noCurrentResults: "Get recommendations first.",
     allCompareAdded: "Added {count} current recommendations to compare.",
@@ -338,164 +339,6 @@ const koreanOfficialMallByBrand = {
   Torriden: "https://www.torriden.com/",
   "ma:nyo": "https://www.manyo.co.kr/",
 };
-
-const STATIC_PRODUCTS = [
-  {
-    id: "cosrx-low-ph-good-morning-gel-cleanser",
-    name: "COSRX Low pH Good Morning Gel Cleanser",
-    display_name_ko: "코스알엑스 약산성 굿모닝 젤 클렌저",
-    brand: "COSRX",
-    category: "cleanser",
-    ingredients: ["cocamidopropyl betaine", "tea tree leaf oil", "betaine salicylate", "citric acid"],
-    display_ingredients_ko: ["코카미도프로필베타인", "티트리잎오일", "베타인살리실레이트", "시트릭애씨드"],
-    suited_skin_types: ["oily", "combination", "normal"],
-    concerns: ["oil_control", "acne", "pores"],
-    texture_tags: ["gel", "lightweight"],
-    oliveyoung_price_krw: 11500,
-    rating: 4.6,
-    review_count: 12000,
-    image_url: "",
-    image_source_type: "official",
-    image_confidence: "",
-    oliveyoung_url: "https://www.oliveyoung.co.kr/",
-    official_url: "https://www.cosrx.co.kr/",
-    review_summary: "가볍고 산뜻한 세정감이 강점이며, 지성/복합성 피부의 아침 세안용으로 많이 선택됩니다.",
-    review_summary_en: "Light gel cleansing texture with a fresh finish, commonly favored for oily or combination morning routines.",
-    positive_reviews: ["세안 후 답답함이 적고 산뜻하다는 반응이 많습니다.", "젤 타입이라 아침에 쓰기 편하다는 의견이 있습니다."],
-    negative_reviews: ["건성 피부에는 세안 후 건조하게 느껴질 수 있습니다."],
-    positive_reviews_en: ["Many reviews mention a fresh finish after cleansing.", "The gel texture is considered easy for morning use."],
-    negative_reviews_en: ["Dry skin users may find it slightly drying."],
-    ingredient_explanations: ingredientExplanations(["cocamidopropyl betaine", "tea tree leaf oil", "betaine salicylate"]),
-  },
-  {
-    id: "anua-heartleaf-77-soothing-toner",
-    name: "Anua Heartleaf 77 Soothing Toner",
-    display_name_ko: "아누아 어성초 77 수딩 토너",
-    brand: "Anua",
-    category: "toner",
-    ingredients: ["houttuynia cordata extract", "glycerin", "butylene glycol", "betaine"],
-    display_ingredients_ko: ["어성초 추출물", "글리세린", "부틸렌글라이콜", "베타인"],
-    suited_skin_types: ["sensitive", "combination", "oily"],
-    concerns: ["redness", "hydration", "barrier_support"],
-    texture_tags: ["lightweight", "dewy"],
-    oliveyoung_price_krw: 24000,
-    rating: 4.7,
-    review_count: 18000,
-    image_url: "",
-    image_source_type: "official",
-    image_confidence: "",
-    oliveyoung_url: "https://www.oliveyoung.co.kr/",
-    official_url: "https://www.anua.kr/",
-    review_summary: "가벼운 토너 제형과 진정 루틴에 대한 만족도가 높고, 민감 피부가 무난하게 쓰기 좋다는 신호가 있습니다.",
-    review_summary_en: "A lightweight soothing toner with strong signals for sensitive and redness-focused routines.",
-    positive_reviews: ["피부가 예민할 때 부담 없이 쓰기 좋다는 후기가 많습니다.", "흡수가 빠르고 끈적임이 적다는 의견이 있습니다."],
-    negative_reviews: ["뚜렷한 기능성 변화를 기대하면 아쉽다는 반응도 있습니다."],
-    positive_reviews_en: ["Many users like it for low-irritation soothing routines.", "It absorbs quickly with minimal stickiness."],
-    negative_reviews_en: ["Some users find the functional effect subtle."],
-    ingredient_explanations: ingredientExplanations(["houttuynia cordata extract", "glycerin", "betaine"]),
-  },
-  {
-    id: "skin1004-madagascar-centella-ampoule",
-    name: "SKIN1004 Madagascar Centella Ampoule",
-    display_name_ko: "스킨1004 마다가스카르 센텔라 앰플",
-    brand: "SKIN1004",
-    category: "serum",
-    ingredients: ["centella asiatica", "madecassoside", "glycerin"],
-    display_ingredients_ko: ["병풀/시카", "마데카소사이드", "글리세린"],
-    suited_skin_types: ["sensitive", "oily", "combination"],
-    concerns: ["redness", "barrier_support", "hydration"],
-    texture_tags: ["lightweight", "dewy"],
-    oliveyoung_price_krw: 22000,
-    rating: 4.7,
-    review_count: 15000,
-    image_url: "",
-    image_source_type: "official",
-    image_confidence: "",
-    oliveyoung_url: "https://www.oliveyoung.co.kr/",
-    official_url: "https://www.skin1004.com/",
-    review_summary: "병풀 중심의 단순한 진정 루틴을 원하는 사용자에게 적합하며, 가벼운 앰플 제형이 특징입니다.",
-    review_summary_en: "A simple centella-forward ampoule for lightweight soothing and barrier-support routines.",
-    positive_reviews: ["피부가 민감할 때 레이어링하기 편하다는 후기가 있습니다.", "묽고 가벼워 여러 단계 루틴에 넣기 쉽다는 의견이 많습니다."],
-    negative_reviews: ["보습감이 강한 제품을 원하는 경우 단독 사용은 가볍게 느껴질 수 있습니다."],
-    positive_reviews_en: ["Users like it for gentle layering when skin feels sensitive.", "The watery texture is easy to add to multi-step routines."],
-    negative_reviews_en: ["It may feel too light as a standalone moisturizing step."],
-    ingredient_explanations: ingredientExplanations(["centella asiatica", "madecassoside", "glycerin"]),
-  },
-  {
-    id: "etude-soonjung-2x-barrier-intensive-cream",
-    name: "ETUDE SoonJung 2x Barrier Intensive Cream",
-    display_name_ko: "에뛰드 순정 2x 베리어 인텐시브 크림",
-    brand: "ETUDE",
-    category: "moisturizer",
-    ingredients: ["panthenol", "madecassoside", "glycerin", "shea butter"],
-    display_ingredients_ko: ["판테놀", "마데카소사이드", "글리세린", "시어버터"],
-    suited_skin_types: ["dry", "sensitive", "normal"],
-    concerns: ["barrier_support", "dryness", "redness"],
-    texture_tags: ["rich"],
-    oliveyoung_price_krw: 21000,
-    rating: 4.6,
-    review_count: 9800,
-    image_url: "",
-    image_source_type: "official",
-    image_confidence: "",
-    oliveyoung_url: "https://www.oliveyoung.co.kr/",
-    official_url: "https://www.etude.com/",
-    review_summary: "장벽 보습을 원하는 건성/민감 피부 루틴에 적합하며, 크림 단계에서 수분감을 오래 잡아주는 편입니다.",
-    review_summary_en: "A barrier-focused cream for dry or sensitive routines that need a richer sealing step.",
-    positive_reviews: ["자극감이 적고 보습막이 오래간다는 의견이 많습니다.", "민감해진 피부에 기본 크림으로 쓰기 좋다는 후기가 있습니다."],
-    negative_reviews: ["지성 피부에는 다소 무겁게 느껴질 수 있습니다."],
-    positive_reviews_en: ["Many users mention low irritation and lasting moisture.", "It works well as a basic cream for sensitive skin days."],
-    negative_reviews_en: ["It can feel heavy for oily skin."],
-    ingredient_explanations: ingredientExplanations(["panthenol", "madecassoside", "glycerin"]),
-  },
-  {
-    id: "isntree-hyaluronic-acid-watery-sun-gel",
-    name: "Isntree Hyaluronic Acid Watery Sun Gel",
-    display_name_ko: "이즈앤트리 히아루론산 워터리 선 젤",
-    brand: "Isntree",
-    category: "sunscreen",
-    ingredients: ["hyaluronic acid", "niacinamide", "panthenol", "centella asiatica"],
-    display_ingredients_ko: ["히알루론산", "나이아신아마이드", "판테놀", "병풀/시카"],
-    suited_skin_types: ["dry", "combination", "normal"],
-    concerns: ["hydration", "barrier_support", "hyperpigmentation"],
-    texture_tags: ["dewy", "lightweight"],
-    oliveyoung_price_krw: 26000,
-    rating: 4.6,
-    review_count: 11000,
-    image_url: "",
-    image_source_type: "official",
-    image_confidence: "",
-    oliveyoung_url: "https://www.oliveyoung.co.kr/",
-    official_url: "https://www.isntree.com/",
-    review_summary: "촉촉한 마무리의 선 젤로, 건조함이 느껴지는 아침 루틴에서 선크림과 수분감을 함께 챙기기 좋습니다.",
-    review_summary_en: "A dewy sun gel that combines daily sunscreen use with a hydrated finish.",
-    positive_reviews: ["백탁이 적고 촉촉하다는 반응이 많습니다.", "메이크업 전에도 부담이 적다는 의견이 있습니다."],
-    negative_reviews: ["번들거림을 싫어하면 마무리가 촉촉하게 느껴질 수 있습니다."],
-    positive_reviews_en: ["Many users mention minimal white cast and a hydrated finish.", "It is often considered comfortable before makeup."],
-    negative_reviews_en: ["Users who dislike shine may find the finish too dewy."],
-    ingredient_explanations: ingredientExplanations(["hyaluronic acid", "niacinamide", "panthenol"]),
-  },
-];
-
-function ingredientExplanations(names) {
-  return names.map((name) => {
-    const label = valueLabels.ko[name] || name;
-    return {
-      name,
-      label: name,
-      display_name_ko: label,
-      rationale: `${name} is included as a supporting ingredient for the selected routine.`,
-      display_rationale_ko: `${label} 성분은 선택한 루틴의 피부 고민을 보조하는 성분으로 표시됩니다.`,
-      evidence_level: "moderate",
-      supports: ["hydration", "barrier_support"],
-      display_supports_ko: ["수분", "장벽"],
-      suitable_for: ["normal", "combination", "sensitive"],
-      display_suitable_for_ko: ["보통", "복합성", "민감성"],
-      cautions: [],
-      display_cautions_ko: [],
-    };
-  });
-}
 
 function text(key) {
   return uiText[state.lang]?.[key] || uiText.ko[key] || key;
@@ -746,8 +589,23 @@ function syncNoneChoice(group, target) {
   }
 }
 
-async function apiJson(url, options) {
-  const response = await fetch(url, options);
+function apiUrl(path) {
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${API_BASE_URL}${path}`;
+}
+
+async function apiFetch(path, options = {}) {
+  return fetch(apiUrl(path), {
+    credentials: "include",
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+    },
+  });
+}
+
+async function apiJson(path, options = {}) {
+  const response = await apiFetch(path, options);
   let data = {};
   try {
     data = await response.json();
@@ -762,243 +620,24 @@ async function apiJson(url, options) {
   return data;
 }
 
-function loadStaticProducts() {
-  state.allProducts = STATIC_PRODUCTS.map(cloneData);
-  state.productsById.clear();
-  state.allProducts.forEach((product) => state.productsById.set(product.id, product));
-}
-
-function cloneData(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
 function emptySelections() {
   return { saved_ids: [], compare_ids: [], saved_products: [], compare_products: [], total_cost_krw: 0 };
 }
 
-function syncStaticSelections() {
-  state.selections.saved_ids = [...new Set(state.selections.saved_ids || [])];
-  state.selections.compare_ids = [...new Set(state.selections.compare_ids || [])];
-  state.selections.saved_products = state.selections.saved_ids.map((id) => state.productsById.get(id)).filter(Boolean);
-  state.selections.compare_products = state.selections.compare_ids.map((id) => state.productsById.get(id)).filter(Boolean);
-  state.selections.total_cost_krw = state.selections.saved_products.reduce((sum, product) => sum + productKrwValue(product), 0);
-}
-
-function buildStaticProfile(query) {
-  const normalizedQuery = normalizeText(query);
-  const profile = {
-    skin_type: normalizeSkinTypes(selectedValues("skinType")),
-    concerns: normalizeConcernValues(selectedValues("mainConcern")),
-    desired_categories: normalizeCategoryValues(selectedValues("productType")),
-    texture_preference: normalizeTextureValues(selectedValues("texture")),
-    max_price_krw: Number(document.querySelector("#budget")?.value || 0) || inferBudgetKrw(normalizedQuery) || null,
-    allergies: normalizeAvoidTerms(document.querySelector("#allergyInput")?.value || ""),
-    preferred_ingredients: inferPreferredIngredients(normalizedQuery),
-  };
-  profile.avoid_ingredients = [...new Set(profile.allergies)];
-  if (!profile.desired_categories.length) {
-    profile.desired_categories = inferCategories(normalizedQuery);
-  }
-  if (!profile.concerns.length) {
-    profile.concerns = inferConcerns(normalizedQuery);
-  }
-  if (!profile.skin_type.length) {
-    profile.skin_type = inferSkinTypes(normalizedQuery);
-  }
-  return profile;
-}
-
-function buildStaticRecommendation(query, isFollowUp = false) {
-  if (!state.allProducts.length) loadStaticProducts();
-  const profile = isFollowUp && hasProfileSignal(state.profile) ? mergeStaticProfile(state.profile, buildStaticProfile(query)) : buildStaticProfile(query);
-  const avoidTerms = (profile.avoid_ingredients || []).map(normalizeText).filter(Boolean);
-  const maxPrice = Number(profile.max_price_krw || 0);
-  const scored = state.allProducts
-    .filter((product) => !avoidTerms.some((term) => product.ingredients?.some((ingredient) => normalizeText(ingredient).includes(term))))
-    .map((product) => ({ product, score: staticProductScore(product, profile, query) }))
-    .filter((item) => !maxPrice || productKrwValue(item.product) <= maxPrice || item.score >= 3)
-    .sort((left, right) => right.score - left.score || productKrwValue(left.product) - productKrwValue(right.product))
-    .slice(0, 5)
-    .map((item) => staticResultItem(item.product, profile, item.score));
-  const results = scored.length ? scored : state.allProducts.slice(0, 5).map((product) => staticResultItem(product, profile, 1));
-  return {
-    recommendation_id: `static-${Date.now()}`,
-    profile,
-    results,
-  };
-}
-
-function mergeStaticProfile(previous, next) {
-  const merged = { ...previous, ...next };
-  ["skin_type", "concerns", "desired_categories", "texture_preference", "allergies", "avoid_ingredients"].forEach((field) => {
-    merged[field] = [...new Set([...(previous?.[field] || []), ...(next?.[field] || [])])];
-  });
-  merged.max_price_krw = next.max_price_krw || previous?.max_price_krw || null;
-  return merged;
-}
-
-function staticProductScore(product, profile, query) {
-  const normalizedQuery = normalizeText(query);
-  let score = 0;
-  score += overlapCount(product.suited_skin_types, profile.skin_type) * 2;
-  score += overlapCount(product.concerns, profile.concerns) * 3;
-  score += (profile.desired_categories || []).includes(product.category) ? 4 : 0;
-  score += overlapCount(product.texture_tags, profile.texture_preference) * 2;
-  score += overlapCount(product.ingredients, profile.preferred_ingredients) * 2;
-  if (product.name && normalizedQuery.includes(normalizeText(product.name))) score += 2;
-  if (product.display_name_ko && normalizedQuery.includes(normalizeText(product.display_name_ko))) score += 2;
-  return score;
-}
-
-function staticResultItem(product, profile, score) {
-  const matchedIngredients = product.ingredients?.filter((ingredient) => {
-    const normalized = normalizeText(ingredient);
-    return (profile.preferred_ingredients || []).some((item) => normalizeText(item) === normalized) || ["glycerin", "panthenol", "centella asiatica", "niacinamide", "hyaluronic acid"].includes(normalized);
-  }) || [];
-  const reasonKo = staticReasonKo(product, profile, score);
-  const reasonEn = staticReasonEn(product, profile, score);
-  return {
-    product,
-    score,
-    reasons: [reasonEn],
-    display_reasons: [state.lang === "ko" ? reasonKo : reasonEn],
-    personalized_reason: state.lang === "ko" ? reasonKo : reasonEn,
-    matched_ingredients: matchedIngredients.length ? matchedIngredients : product.ingredients?.slice(0, 3) || [],
-    display_matched_ingredients: (matchedIngredients.length ? matchedIngredients : product.ingredients?.slice(0, 3) || []).map(displayIngredient),
-  };
-}
-
-function staticReasonKo(product, profile, score) {
-  const pieces = [];
-  if ((profile.desired_categories || []).includes(product.category)) pieces.push(`${displayValue(product.category)} 조건과 맞습니다`);
-  if (overlapCount(product.concerns, profile.concerns)) pieces.push(`${product.concerns.map(displayValue).join(", ")} 고민에 맞춘 성분 구성이 있습니다`);
-  if (overlapCount(product.suited_skin_types, profile.skin_type)) pieces.push(`${product.suited_skin_types.map(displayValue).join(", ")} 피부 타입에 적합한 제품군입니다`);
-  if (product.oliveyoung_price_krw) pieces.push(`${krw(product.oliveyoung_price_krw)} 가격대로 예산 검토가 가능합니다`);
-  if (!pieces.length || score <= 0) pieces.push("샘플 데이터 기준으로 기본 루틴에 넣기 쉬운 제품입니다");
-  return pieces.join(". ") + ".";
-}
-
-function staticReasonEn(product, profile, score) {
-  const pieces = [];
-  if ((profile.desired_categories || []).includes(product.category)) pieces.push(`It matches the requested ${displayValue(product.category)} category`);
-  if (overlapCount(product.concerns, profile.concerns)) pieces.push(`Its ingredient profile supports ${product.concerns.map(displayValue).join(", ")}`);
-  if (overlapCount(product.suited_skin_types, profile.skin_type)) pieces.push(`It fits ${product.suited_skin_types.map(displayValue).join(", ")} skin routines`);
-  if (product.oliveyoung_price_krw) pieces.push(`The listed price is ${krw(product.oliveyoung_price_krw)}`);
-  if (!pieces.length || score <= 0) pieces.push("It is an easy sample-data pick for a basic routine");
-  return pieces.join(". ") + ".";
-}
-
-function overlapCount(left = [], right = []) {
-  const rightSet = new Set((right || []).map(normalizeText));
-  return (left || []).filter((item) => rightSet.has(normalizeText(item))).length;
-}
-
-function normalizeSkinTypes(values) {
-  const map = { 지성: "oily", 건성: "dry", 복합성: "combination", 민감성: "sensitive", Oily: "oily", Dry: "dry", Combination: "combination", Sensitive: "sensitive" };
-  return values.map((value) => map[value] || value).filter(Boolean);
-}
-
-function normalizeConcernValues(values) {
-  const map = { 트러블: "acne", 유분: "oil_control", 수분: "hydration", 장벽: "barrier_support", 홍조: "redness", 잡티: "hyperpigmentation", 모공: "pores" };
-  return values.map((value) => map[value] || normalizeText(value).replaceAll(" ", "_")).filter(Boolean);
-}
-
-function normalizeCategoryValues(values) {
-  const map = { 클렌저: "cleanser", 클렌징오일: "cleanser", 토너: "toner", 토너패드: "toner", 미스트: "toner", 세럼: "serum", 에센스: "serum", 수분크림: "moisturizer", 로션: "moisturizer", 선크림: "sunscreen", 기초루틴: "basic" };
-  return values.map((value) => map[String(value).replaceAll(" ", "")] || value).filter(Boolean);
-}
-
-function normalizeTextureValues(values) {
-  const map = { 촉촉: "dewy", 산뜻: "lightweight", 꾸덕: "rich", 젤: "gel" };
-  return values.map((value) => map[value] || normalizeText(value)).filter(Boolean);
-}
-
-function normalizeAvoidTerms(value) {
-  return String(value || "")
-    .split(/[,\n/]+/)
-    .map((item) => normalizeText(item))
-    .filter(Boolean);
-}
-
-function inferCategories(query) {
-  const pairs = [
-    ["cleanser", ["클렌저", "세안", "cleanser", "cleansing"]],
-    ["toner", ["토너", "스킨", "toner"]],
-    ["serum", ["세럼", "앰플", "에센스", "serum", "ampoule", "essence"]],
-    ["moisturizer", ["크림", "로션", "moisturizer", "cream"]],
-    ["sunscreen", ["선크림", "자외선", "sunscreen", "sun"]],
-  ];
-  return pairs.filter(([, terms]) => terms.some((term) => query.includes(normalizeText(term)))).map(([category]) => category);
-}
-
-function inferConcerns(query) {
-  const pairs = [
-    ["acne", ["트러블", "여드름", "acne"]],
-    ["oil_control", ["유분", "피지", "oily", "oil"]],
-    ["hydration", ["수분", "보습", "hydration", "dry"]],
-    ["barrier_support", ["장벽", "barrier"]],
-    ["redness", ["홍조", "진정", "redness", "soothing"]],
-    ["hyperpigmentation", ["잡티", "색소", "dark spot"]],
-    ["pores", ["모공", "pores"]],
-  ];
-  return pairs.filter(([, terms]) => terms.some((term) => query.includes(normalizeText(term)))).map(([concern]) => concern);
-}
-
-function inferSkinTypes(query) {
-  const pairs = [
-    ["oily", ["지성", "oily"]],
-    ["dry", ["건성", "dry"]],
-    ["combination", ["복합성", "combination"]],
-    ["sensitive", ["민감", "sensitive"]],
-  ];
-  return pairs.filter(([, terms]) => terms.some((term) => query.includes(normalizeText(term)))).map(([skinType]) => skinType);
-}
-
-function inferPreferredIngredients(query) {
-  const ingredients = ["niacinamide", "panthenol", "hyaluronic acid", "centella asiatica", "glycerin", "tea tree", "salicylic acid", "madecassoside"];
-  const aliases = {
-    niacinamide: ["나이아신아마이드", "niacinamide"],
-    panthenol: ["판테놀", "panthenol"],
-    "hyaluronic acid": ["히알루론산", "hyaluronic"],
-    "centella asiatica": ["병풀", "시카", "centella", "cica"],
-    glycerin: ["글리세린", "glycerin"],
-    "tea tree": ["티트리", "tea tree"],
-    "salicylic acid": ["살리실산", "bha", "salicylic"],
-    madecassoside: ["마데카소사이드", "madecassoside"],
-  };
-  return ingredients.filter((ingredient) => aliases[ingredient].some((term) => query.includes(normalizeText(term))));
-}
-
-function inferBudgetKrw(query) {
-  const match = query.match(/(\d+)\s*(만원|만|원|krw)/);
-  if (!match) return null;
-  const value = Number(match[1]);
-  if (!value) return null;
-  return match[2] === "만원" || match[2] === "만" ? value * 10000 : value;
-}
-
 async function loadProducts() {
-  if (IS_STATIC_DEMO) {
-    loadStaticProducts();
-    renderCatalogs();
-    return;
-  }
   try {
     const data = await apiJson("/api/products");
     state.allProducts = data.products || [];
     state.productsById.clear();
     state.allProducts.forEach((product) => state.productsById.set(product.id, product));
   } catch {
-    loadStaticProducts();
+    state.allProducts = [];
+    setStatus(text("backendConnectionFailed"));
   }
   renderCatalogs();
 }
 
 async function loadSession() {
-  if (IS_STATIC_DEMO) {
-    renderProfile(state.profile);
-    return;
-  }
   try {
     const data = await apiJson("/api/session");
     state.profile = data.profile || {};
@@ -1009,14 +648,6 @@ async function loadSession() {
 }
 
 async function loadSelections() {
-  if (IS_STATIC_DEMO) {
-    state.selections = emptySelections();
-    renderRoutine();
-    renderCompareSummary();
-    renderCompareTable();
-    renderCatalogs();
-    return;
-  }
   try {
     state.selections = await apiJson("/api/selections");
   } catch {
@@ -1035,25 +666,20 @@ async function submitRecommendation(isFollowUp, query) {
   if (!query) return;
   setStatus(isFollowUp ? text("followUpStatus") : text("submitStatus"));
   let data;
-  let staticDemo = IS_STATIC_DEMO;
-  if (IS_STATIC_DEMO) {
-    data = buildStaticRecommendation(query, isFollowUp);
-  } else {
-    try {
-      data = await apiJson(isFollowUp ? "/api/follow-up" : "/api/recommend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query,
-          limit: 5,
-          use_openai: false,
-          language: state.lang,
-        }),
-      });
-    } catch (error) {
-      staticDemo = true;
-      data = buildStaticRecommendation(query, isFollowUp);
-    }
+  try {
+    data = await apiJson(isFollowUp ? "/api/follow-up" : "/api/recommend", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query,
+        limit: 5,
+        use_openai: false,
+        language: state.lang,
+      }),
+    });
+  } catch (error) {
+    setStatus(error?.data?.detail || text("backendConnectionFailed"));
+    return;
   }
   state.recommendationId = data.recommendation_id;
   state.profile = data.profile || {};
@@ -1062,7 +688,7 @@ async function submitRecommendation(isFollowUp, query) {
   renderProfile(state.profile);
   renderResults(data.results || []);
   document.querySelector("#followUpQuery").value = "";
-  const countText = text(staticDemo ? "staticDemoResultCount" : isFollowUp ? "followUpResultCount" : "resultCount").replace("{count}", String((data.results || []).length));
+  const countText = text(isFollowUp ? "followUpResultCount" : "resultCount").replace("{count}", String((data.results || []).length));
   setStatus(countText);
   document.querySelector("#recommendation").scrollIntoView({ behavior: "smooth", block: "start" });
   if (window.lucide) window.lucide.createIcons();
@@ -1110,12 +736,11 @@ function includesAny(value, terms) {
 }
 
 async function resetCriteria() {
-  if (!IS_STATIC_DEMO) {
-    try {
-      await fetch("/api/profile", { method: "DELETE" });
-    } catch {
-      // Static fallback keeps the UI responsive even when the API is unavailable.
-    }
+  try {
+    await apiJson("/api/profile", { method: "DELETE" });
+  } catch {
+    setStatus(text("backendConnectionFailed"));
+    return;
   }
   state.recommendationId = null;
   state.profile = {};
@@ -1131,7 +756,7 @@ async function addCurrentResultsToSelection(listType) {
     return;
   }
   for (const product of products) {
-    await setSelection(product.id, listType, true);
+    if (!(await setSelection(product.id, listType, true))) return;
   }
   await hydrateSelectedProducts();
   renderRoutine();
@@ -1300,7 +925,7 @@ function renderProductCard(item) {
 async function toggleSelection(productId, listType) {
   const ids = state.selections[`${listType}_ids`] || [];
   const selected = !ids.includes(productId);
-  await setSelection(productId, listType, selected);
+  if (!(await setSelection(productId, listType, selected))) return;
   await hydrateSelectedProducts();
   renderRoutine();
   renderCompareSummary();
@@ -1318,28 +943,16 @@ async function toggleSelection(productId, listType) {
 }
 
 async function setSelection(productId, listType, selected) {
-  if (IS_STATIC_DEMO) {
-    const key = `${listType}_ids`;
-    const ids = new Set(state.selections[key] || []);
-    if (selected) ids.add(productId);
-    else ids.delete(productId);
-    state.selections[key] = [...ids];
-    syncStaticSelections();
-    return;
-  }
   try {
     state.selections = await apiJson("/api/selections", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ product_id: productId, list_type: listType, selected }),
     });
+    return true;
   } catch {
-    const key = `${listType}_ids`;
-    const ids = new Set(state.selections[key] || []);
-    if (selected) ids.add(productId);
-    else ids.delete(productId);
-    state.selections[key] = [...ids];
-    syncStaticSelections();
+    setStatus(text("backendConnectionFailed"));
+    return false;
   }
 }
 
@@ -1392,7 +1005,7 @@ function renderCompareTable() {
 async function clearCompareSelections() {
   const ids = [...(state.selections.compare_ids || [])];
   for (const productId of ids) {
-    await setSelection(productId, "compare", false);
+    if (!(await setSelection(productId, "compare", false))) return;
   }
   await hydrateSelectedProducts();
   document.querySelector("#compareTable").innerHTML = "";
@@ -1511,12 +1124,11 @@ function showIngredient(productId, ingredientName) {
 }
 
 async function resetSession() {
-  if (!IS_STATIC_DEMO) {
-    try {
-      await fetch("/api/session", { method: "DELETE" });
-    } catch {
-      // Keep the reset action usable for static deployments.
-    }
+  try {
+    await apiJson("/api/session", { method: "DELETE" });
+  } catch {
+    setStatus(text("backendConnectionFailed"));
+    return;
   }
   state.recommendationId = null;
   state.profile = {};
@@ -1569,7 +1181,7 @@ function renderSelectionCatalog(containerId, listType) {
 }
 
 async function removeSelection(productId, listType) {
-  await setSelection(productId, listType, false);
+  if (!(await setSelection(productId, listType, false))) return;
   renderRoutine();
   renderCompareSummary();
   renderCompareTable();

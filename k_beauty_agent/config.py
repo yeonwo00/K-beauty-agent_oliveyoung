@@ -63,6 +63,18 @@ def secure_cookies() -> bool:
     return os.getenv("SECURE_COOKIES", "true" if is_production() else "false").lower() in {"1", "true", "yes", "on"}
 
 
+def cookie_samesite() -> str:
+    value = os.getenv("COOKIE_SAMESITE", "none" if is_production() else "lax").lower()
+    if value not in {"lax", "strict", "none"}:
+        raise ValueError("COOKIE_SAMESITE must be one of: lax, strict, none")
+    return value
+
+
+def cors_allow_origins() -> list[str]:
+    value = os.getenv("CORS_ALLOW_ORIGINS", "https://yeonwo00.github.io")
+    return [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip()]
+
+
 def _secret_env(name: str, dev_default: str) -> str:
     value = os.getenv(name)
     if value:

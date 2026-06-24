@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -19,6 +20,8 @@ from .config import (
     DEFAULT_PRODUCTS_CSV,
     DEFAULT_REVIEWS_CSV,
     admin_token,
+    cookie_samesite,
+    cors_allow_origins,
     external_cache_path,
     follow_up_llm_enabled,
     product_source,
@@ -55,6 +58,14 @@ def _build_agent() -> KBeautyAgent:
 
 
 app = FastAPI(title="K-Beauty Agent", version="0.2.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_allow_origins(),
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 store = SQLiteStore(sqlite_path_from_url())
 agent = _build_agent()
 
@@ -105,7 +116,7 @@ def _set_cookie(response: Response, session_id: str, request: Request | None = N
         session_id,
         max_age=COOKIE_MAX_AGE,
         httponly=True,
-        samesite="lax",
+        samesite=cookie_samesite(),
         secure=secure_cookies() or (request is not None and request.url.scheme == "https"),
     )
 
@@ -188,7 +199,12 @@ def get_session(request: Request, response: Response, session_id: str = Depends(
 @app.delete("/api/session")
 def reset_session(response: Response, session_id: str = Depends(_session_id)) -> dict[str, object]:
     store.delete_session(session_id)
-    response.delete_cookie(SESSION_COOKIE)
+    response.delete_cookie(
+        SESSION_COOKIE,
+        httponly=True,
+        samesite=cookie_samesite(),
+        secure=secure_cookies(),
+    )
     return {"ok": True}
 
 

@@ -671,6 +671,7 @@ function setChoiceLabels(en) {
 
 document.addEventListener("DOMContentLoaded", async () => {
   applyPageMode();
+  window.addEventListener("hashchange", applyPageMode);
   bindEvents();
   applyLanguage();
   updateBudgetLabel();

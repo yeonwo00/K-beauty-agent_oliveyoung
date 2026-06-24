@@ -57,7 +57,7 @@ def product_to_dict(product: Product) -> dict[str, Any]:
     }
 
 
-def score_to_dict(score: ProductScore, language: str | None = "en") -> dict[str, Any]:
+def score_to_dict(score: ProductScore, language: str | None = "en", personalized_reason: str | None = None) -> dict[str, Any]:
     return {
         "product": product_to_dict(score.product),
         "score": round(score.score, 2),
@@ -76,6 +76,7 @@ def score_to_dict(score: ProductScore, language: str | None = "en") -> dict[str,
         "missing_data": score.missing_data,
         "display_missing_data": [missing_label(item, language) for item in score.missing_data],
         "similar_products": [product_to_dict(product) for product in score.similar_products],
+        "personalized_reason": personalized_reason or fallback_personalized_reason(score, language),
     }
 
 
@@ -118,19 +119,39 @@ def recommendation_to_dict(
     grounded_explanation: str | None = None,
     openai_status: str = "not_used",
     language: str | None = "en",
+    product_reasons: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     return {
         "recommendation_id": recommendation_id,
         "decision": recommendation.decision,
         "query": recommendation.query,
         "profile": profile_to_public_dict(recommendation.profile),
-        "results": [score_to_dict(item, language) for item in recommendation.results],
+        "results": [
+            score_to_dict(item, language, personalized_reason=(product_reasons or {}).get(item.product.id))
+            for item in recommendation.results
+        ],
         "fallback_message": recommendation.fallback_message,
         "review_summary": recommendation.review_summary,
         "guardrails": recommendation.guardrails,
         "grounded_explanation": grounded_explanation or format_recommendation_text(recommendation, language),
         "openai_status": openai_status,
     }
+
+
+def fallback_personalized_reason(score: ProductScore, language: str | None = "en") -> str:
+    reasons = [translate_reason(reason, language) for reason in score.reasons[:3]]
+    cautions = [translate_caution(caution, language) for caution in score.cautions[:1]]
+    if language == "ko":
+        if reasons and cautions:
+            return f"검색 조건과 맞는 근거는 {' '.join(reasons)} 다만 {cautions[0]}"
+        if reasons:
+            return "검색 조건과 맞는 근거는 " + " ".join(reasons)
+        return "현재 검색 조건과 제품 DB의 카테고리, 피부 적합도, 성분 근거를 기준으로 추천되었습니다."
+    if reasons and cautions:
+        return f"This matches your criteria because {' '.join(reasons)} Note: {cautions[0]}"
+    if reasons:
+        return "This matches your criteria because " + " ".join(reasons)
+    return "This was recommended based on the current category, skin-fit, and ingredient evidence in the product database."
 
 
 def similarity_score(base: Product, candidate: Product) -> float:

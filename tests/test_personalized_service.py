@@ -9,8 +9,9 @@ from pathlib import Path
 from k_beauty_agent.agent import KBeautyAgent
 from k_beauty_agent.config import admin_token, session_secret
 from k_beauty_agent.database import ProductDatabase
+from k_beauty_agent.followup_parser import parse_follow_up_patch, sanitize_profile_patch
 from k_beauty_agent.knowledge_base import find_evidence_for_ingredient
-from k_beauty_agent.personalization import build_personalization, merge_profiles, profile_to_dict
+from k_beauty_agent.personalization import apply_profile_patch, build_personalization, merge_profiles, profile_to_dict
 from k_beauty_agent.recommender import IngredientHybridRecommender
 from k_beauty_agent.serializers import product_to_dict
 from k_beauty_agent.storage import SQLiteStore
@@ -18,6 +19,18 @@ from k_beauty_agent.storage import SQLiteStore
 ROOT = Path(__file__).resolve().parents[1]
 PRODUCTS_CSV = ROOT / "data" / "products_verified.csv"
 REVIEWS_CSV = ROOT / "data" / "review_summaries.csv"
+
+
+class FakeCompletionClient:
+    def __init__(self, text: str):
+        self.text = text
+        self.system = ""
+        self.user = ""
+
+    def complete(self, system: str, user: str) -> str:
+        self.system = system
+        self.user = user
+        return self.text
 
 
 class PersonalizedServiceUnitTest(unittest.TestCase):
@@ -59,6 +72,16 @@ class PersonalizedServiceUnitTest(unittest.TestCase):
             ingredients = " ".join(item.product.ingredients).lower()
             self.assertIn("niacinamide", ingredients)
 
+    def test_follow_up_product_category_replaces_previous_category(self) -> None:
+        stored = profile_to_dict(merge_profiles(None, "지성 피부 선크림 추천", []))
+        merged = merge_profiles(stored, "히알루론산 빼고 3만원 이상의 산뜻한 세럼으로 바꿔줘", ["지성 피부 선크림 추천"])
+
+        self.assertEqual(merged.skin_type, "oily")
+        self.assertEqual(merged.desired_categories, ["serum"])
+        self.assertEqual(merged.min_price_krw, 30000)
+        self.assertIn("hyaluronic acid", merged.avoid_ingredients)
+        self.assertEqual(merged.texture_preference, "lightweight")
+
     def test_korean_follow_up_variants_are_understood(self) -> None:
         stored = profile_to_dict(merge_profiles(None, "지성 피부에 맞는 기초 제품을 추천해줘", []))
         phrases = [
@@ -73,6 +96,50 @@ class PersonalizedServiceUnitTest(unittest.TestCase):
         self.assertIn("gentle_preference", merged.sensitivities)
         self.assertIn("budget_preference", merged.sensitivities)
         self.assertIn("barrier_support", merged.concerns)
+
+    def test_llm_follow_up_patch_can_extend_profile_safely(self) -> None:
+        stored = profile_to_dict(merge_profiles(None, "지성 피부에 맞는 기초 제품을 추천해줘", []))
+        client = FakeCompletionClient(
+            '{"desired_categories":["serum"],"min_price_krw":30000,'
+            '"avoid_ingredients":["hyaluronic acid"],"texture_preference":"lightweight"}'
+        )
+
+        patch = parse_follow_up_patch(
+            "히알루론산 빼고 3만원 이상의 산뜻한 세럼으로 바꿔줘",
+            stored_profile=stored,
+            recent_queries=["지성 피부에 맞는 기초 제품을 추천해줘"],
+            client=client,
+            language="ko",
+        )
+        enriched = apply_profile_patch(stored, patch)
+        merged = merge_profiles(enriched, "히알루론산 빼고 3만원 이상의 산뜻한 세럼으로 바꿔줘", [])
+
+        self.assertEqual(merged.skin_type, "oily")
+        self.assertIn("serum", merged.desired_categories)
+        self.assertEqual(merged.min_price_krw, 30000)
+        self.assertIn("hyaluronic acid", merged.avoid_ingredients)
+        self.assertEqual(merged.texture_preference, "lightweight")
+
+    def test_llm_follow_up_patch_rejects_unknown_control_fields(self) -> None:
+        patch = sanitize_profile_patch(
+            {
+                "skin_type": "dragon",
+                "desired_categories": ["sunscreen", "injectable"],
+                "concerns": ["oil_control", "medical_diagnosis"],
+                "avoid_ingredients": ["hyaluronic acid<script>", "niacinamide"],
+                "max_price_krw": 999999999,
+                "min_price_krw": 30000,
+                "delete_all_filters": True,
+            }
+        )
+
+        self.assertNotIn("skin_type", patch)
+        self.assertEqual(patch["desired_categories"], ["sunscreen"])
+        self.assertEqual(patch["concerns"], ["oil_control"])
+        self.assertEqual(patch["avoid_ingredients"], ["hyaluronic acid script", "niacinamide"])
+        self.assertNotIn("max_price_krw", patch)
+        self.assertEqual(patch["min_price_krw"], 30000)
+        self.assertNotIn("delete_all_filters", patch)
 
     def test_quiz_texture_and_krw_budget_are_understood(self) -> None:
         merged = merge_profiles(None, "지성 피부, 선크림 추천, 주요 고민은 유분, 산뜻 제형 선호, 20000원 이하", [])
@@ -317,6 +384,8 @@ class PersonalizedServiceUnitTest(unittest.TestCase):
         self.assertNotIn("fallbackImage", app_js)
         self.assertNotIn("product-placeholder.svg", app_js)
         self.assertNotIn("placehold.co", app_js)
+        self.assertNotIn('class="score"', app_js)
+        self.assertNotIn(".score", (ROOT / "static" / "styles.css").read_text(encoding="utf-8"))
 
     def test_frontend_localization_and_compare_auto_update_hooks(self) -> None:
         app_js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
@@ -335,6 +404,13 @@ class PersonalizedServiceUnitTest(unittest.TestCase):
         self.assertIn("function storeLanguage(lang)", app_js)
         self.assertIn("window.localStorage?.setItem(LANGUAGE_STORAGE_KEY, lang)", app_js)
         self.assertIn("renderCompareSummary();\n  renderCompareTable();\n  renderCatalogs();", app_js)
+        self.assertIn("function parseCommand(query)", app_js)
+        self.assertIn("resetCriteria", app_js)
+        self.assertIn('addCurrentResultsToSelection("compare")', app_js)
+        self.assertIn('addCurrentResultsToSelection("saved")', app_js)
+        self.assertIn('await fetch("/api/profile", { method: "DELETE" })', app_js)
+        self.assertIn("state.currentResults = data.results || []", app_js)
+        self.assertIn("item.personalized_reason", app_js)
         self.assertIn("glowpick: text(\"glowpickImage\")", app_js)
         self.assertIn("retailer: text(\"retailerImage\")", app_js)
         self.assertIn("function displayProductName(product)", app_js)
@@ -490,6 +566,22 @@ class PersonalizedServiceApiTest(unittest.TestCase):
         self.assertEqual(follow_up.status_code, 200)
         self.assertIn("oil_control", follow_up.text)
 
+    def test_profile_reset_keeps_session_but_clears_search_criteria(self) -> None:
+        response = self.client.post(
+            "/api/recommend",
+            json={"query": "지성 피부 선크림 3만원 이하 추천", "limit": 3, "use_openai": False},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["profile"]["skin_type"], "oily")
+
+        cleared = self.client.delete("/api/profile")
+        self.assertEqual(cleared.status_code, 200)
+        self.assertEqual(cleared.json()["profile"], {})
+
+        session = self.client.get("/api/session")
+        self.assertEqual(session.status_code, 200)
+        self.assertEqual(session.json()["profile"], {})
+
     def test_selection_api_tracks_saved_compare_and_total_cost(self) -> None:
         response = self.client.post(
             "/api/selections",
@@ -542,6 +634,8 @@ class PersonalizedServiceApiTest(unittest.TestCase):
         self.assertIn("추천 제품", data["grounded_explanation"])
         self.assertIn("추천 이유", data["grounded_explanation"])
         self.assertIn("display_reasons", data["results"][0])
+        self.assertIn("personalized_reason", data["results"][0])
+        self.assertTrue(data["results"][0]["personalized_reason"])
         self.assertTrue(any("피부" in reason or "성분" in reason for reason in data["results"][0]["display_reasons"]))
 
     def test_english_language_response_uses_source_terms(self) -> None:
@@ -561,6 +655,7 @@ class PersonalizedServiceApiTest(unittest.TestCase):
         self.assertIn("review_summary_en", data["results"][0]["product"])
         self.assertTrue(data["results"][0]["product"]["review_summary_en"])
         self.assertIn("display_reasons", data["results"][0])
+        self.assertIn("personalized_reason", data["results"][0])
         self.assertFalse(any("피부" in reason or "성분" in reason for reason in data["results"][0]["display_reasons"]))
 
     def test_admin_endpoints_are_protected(self) -> None:

@@ -6,6 +6,7 @@ const state = {
   profile: {},
   productsById: new Map(),
   allProducts: [],
+  currentResults: [],
   routineSelectedIds: new Set(),
   routineKnownSavedIds: new Set(),
   selections: { saved_ids: [], compare_ids: [], saved_products: [], compare_products: [], total_cost_krw: 0 },
@@ -22,8 +23,12 @@ const uiText = {
     followUpComplete: "후속 조건 반영",
     resultCount: "추천 결과 {count}개",
     followUpResultCount: "후속 조건을 반영한 추천 {count}개",
+    criteriaReset: "검색 기준을 초기화했습니다.",
+    noCurrentResults: "먼저 추천 결과를 받아주세요.",
+    allCompareAdded: "현재 추천 제품 {count}개를 비교에 추가했습니다.",
+    allRoutineAdded: "현재 추천 제품 {count}개를 루틴에 담았습니다.",
     criteriaTitle: "검색 기준",
-    recommendationGuide: "추천 카드는 적합성 점수 순으로 정렬되며, 카드 안의 중요 성분은 추천 근거에서 중요한 순서로 표시됩니다.",
+    recommendationGuide: "추천 카드는 사용자 조건과 제품 근거의 적합도를 기준으로 정렬되며, 카드 안의 중요 성분은 추천 근거에서 중요한 순서로 표시됩니다.",
     reset: "세션이 초기화되었습니다.",
     noReason: "추천 이유 데이터가 아직 없습니다.",
     noReview: "리뷰 요약 데이터가 아직 없습니다.",
@@ -88,8 +93,12 @@ const uiText = {
     followUpComplete: "Follow-up applied",
     resultCount: "{count} recommendations",
     followUpResultCount: "{count} recommendations after follow-up",
+    criteriaReset: "Search criteria have been reset.",
+    noCurrentResults: "Get recommendations first.",
+    allCompareAdded: "Added {count} current recommendations to compare.",
+    allRoutineAdded: "Added {count} current recommendations to routine.",
     criteriaTitle: "Search criteria",
-    recommendationGuide: "Recommendation cards are ordered by fit score. Key ingredients inside each card are shown in order of recommendation importance.",
+    recommendationGuide: "Recommendation cards are ordered by fit to your criteria. Key ingredients inside each card are shown in order of recommendation importance.",
     reset: "Session has been reset.",
     noReason: "No recommendation rationale yet.",
     noReview: "No review summary yet.",
@@ -514,7 +523,9 @@ function bindEvents() {
   document.querySelector("#followUpForm").addEventListener("submit", (event) => {
     event.preventDefault();
     const input = document.querySelector("#followUpQuery");
-    submitRecommendation(true, input.value.trim());
+    const query = input.value.trim();
+    if (handleCommand(query)) return;
+    submitRecommendation(hasProfileSignal(state.profile), query);
   });
   document.querySelector("#budget").addEventListener("change", updateBudgetLabel);
   document.querySelector("#resetSession").addEventListener("click", resetSession);
@@ -616,10 +627,10 @@ async function submitRecommendation(isFollowUp, query) {
   }
   state.recommendationId = data.recommendation_id;
   state.profile = data.profile || {};
+  state.currentResults = data.results || [];
   (data.results || []).forEach((item) => state.productsById.set(item.product.id, item.product));
   renderProfile(state.profile);
   renderResults(data.results || []);
-  document.querySelector("#followUpForm").classList.remove("hidden");
   document.querySelector("#followUpQuery").value = "";
   const countText = text(isFollowUp ? "followUpResultCount" : "resultCount").replace("{count}", String((data.results || []).length));
   setStatus(countText);
@@ -629,6 +640,72 @@ async function submitRecommendation(isFollowUp, query) {
 
 function setStatus(message) {
   document.querySelector("#status").textContent = message;
+}
+
+function handleCommand(query) {
+  const command = parseCommand(query);
+  if (!command) return false;
+  if (command === "resetCriteria") {
+    resetCriteria();
+    return true;
+  }
+  if (command === "addAllCompare") {
+    addCurrentResultsToSelection("compare");
+    return true;
+  }
+  if (command === "addAllRoutine") {
+    addCurrentResultsToSelection("saved");
+    return true;
+  }
+  return false;
+}
+
+function parseCommand(query) {
+  const normalized = normalizeText(query);
+  if (!normalized) return null;
+  const wantsAll = includesAny(normalized, ["all", "every", "current", "recommended", "recommendations", "전체", "전부", "모두", "다", "추천", "추천제품", "추천 제품"]);
+  const wantsCompare = includesAny(normalized, ["compare", "comparison", "비교", "비교페이지", "비교 페이지"]);
+  const wantsRoutine = includesAny(normalized, ["routine", "cart", "save", "saved", "basket", "루틴", "장바구니", "저장", "담아", "넣어"]);
+  const wantsReset = includesAny(normalized, ["reset", "clear", "remove", "delete", "리셋", "초기화", "비워", "지워", "삭제"]);
+  const targetsCriteria = includesAny(normalized, ["criteria", "condition", "conditions", "filter", "filters", "profile", "search", "follow up", "followup", "조건", "검색", "필터", "프로필", "후속"]);
+
+  if (wantsReset && (targetsCriteria || wantsAll)) return "resetCriteria";
+  if (wantsAll && wantsCompare) return "addAllCompare";
+  if (wantsAll && wantsRoutine) return "addAllRoutine";
+  return null;
+}
+
+function includesAny(value, terms) {
+  return terms.some((term) => value.includes(term));
+}
+
+async function resetCriteria() {
+  await fetch("/api/profile", { method: "DELETE" });
+  state.recommendationId = null;
+  state.profile = {};
+  document.querySelector("#followUpQuery").value = "";
+  renderProfile({});
+  setStatus(text("criteriaReset"));
+}
+
+async function addCurrentResultsToSelection(listType) {
+  const products = state.currentResults.map((item) => item.product).filter(Boolean);
+  if (!products.length) {
+    setStatus(text("noCurrentResults"));
+    return;
+  }
+  for (const product of products) {
+    await setSelection(product.id, listType, true);
+  }
+  await hydrateSelectedProducts();
+  renderRoutine();
+  renderCompareSummary();
+  renderCatalogs();
+  renderResults(state.currentResults);
+  if (listType === "compare") renderCompareTable();
+  document.querySelector("#followUpQuery").value = "";
+  setStatus(text(listType === "compare" ? "allCompareAdded" : "allRoutineAdded").replace("{count}", String(products.length)));
+  if (window.lucide) window.lucide.createIcons();
 }
 
 function renderProfile(profile) {
@@ -653,6 +730,22 @@ function renderProfile(profile) {
   const blockedHtml = blocked ? `<span class="blocked-ingredients"><strong>${text("blockedIngredients")}</strong>${escapeHtml(blocked)}</span>` : "";
   const profileHtml = `${html}${blockedHtml}`;
   document.querySelector("#profileView").innerHTML = profileHtml || `<span>${text("profileEmpty")}</span>`;
+}
+
+function hasProfileSignal(profile) {
+  if (!profile) return false;
+  const listFields = ["concerns", "desired_categories", "preferred_ingredients", "sensitivities", "allergies", "avoid_ingredients"];
+  if (listFields.some((field) => Array.isArray(profile[field]) && profile[field].length > 0)) return true;
+  return Boolean(
+    profile.skin_type ||
+      profile.texture_preference ||
+      profile.location_or_climate ||
+      profile.pregnant_or_nursing ||
+      profile.max_price_usd != null ||
+      profile.max_price_krw != null ||
+      profile.min_price_usd != null ||
+      profile.min_price_krw != null
+  );
 }
 
 function displayValue(value, field = "") {
@@ -711,6 +804,7 @@ function renderProductCard(item) {
   const isSaved = state.selections.saved_ids?.includes(product.id);
   const isCompare = state.selections.compare_ids?.includes(product.id);
   const reasons = item.display_reasons || item.reasons || [];
+  const personalizedReason = item.personalized_reason || reasons.slice(0, 3).join(" ");
   const matchedRaw = item.matched_ingredients || [];
   const matched = item.display_matched_ingredients || matchedRaw;
   const ingredientButtons = orderedIngredientExplanations(product, matchedRaw)
@@ -725,7 +819,6 @@ function renderProductCard(item) {
       <div class="product-media ${product.image_url ? "" : "image-missing"}" data-image-frame>
         ${productImage(product)}
         ${imageSourceBadge(product)}
-        <span class="score">${Number(item.score || 0).toFixed(1)}</span>
       </div>
       <div class="product-body">
         <div class="product-head">
@@ -738,7 +831,7 @@ function renderProductCard(item) {
         <p class="meta">${escapeHtml(displayValue(product.category))} · ${skinCompatibility(product)}</p>
         <div class="note-list">
           <strong>${text("recommendedReason")}</strong>
-          ${renderBullets(reasons.slice(0, 4))}
+          <p>${escapeHtml(personalizedReason || text("noReason"))}</p>
         </div>
         <div class="ingredient-row">
           <strong>${text("ingredients")}</strong>
@@ -771,12 +864,7 @@ function renderProductCard(item) {
 async function toggleSelection(productId, listType) {
   const ids = state.selections[`${listType}_ids`] || [];
   const selected = !ids.includes(productId);
-  const response = await fetch("/api/selections", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ product_id: productId, list_type: listType, selected }),
-  });
-  state.selections = await response.json();
+  await setSelection(productId, listType, selected);
   await hydrateSelectedProducts();
   renderRoutine();
   renderCompareSummary();
@@ -791,6 +879,15 @@ async function toggleSelection(productId, listType) {
       }
   });
   if (window.lucide) window.lucide.createIcons();
+}
+
+async function setSelection(productId, listType, selected) {
+  const response = await fetch("/api/selections", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ product_id: productId, list_type: listType, selected }),
+  });
+  state.selections = await response.json();
 }
 
 async function hydrateSelectedProducts() {
@@ -969,13 +1066,13 @@ async function resetSession() {
   await fetch("/api/session", { method: "DELETE" });
   state.recommendationId = null;
   state.profile = {};
+  state.currentResults = [];
   state.selections = { saved_ids: [], compare_ids: [], saved_products: [], compare_products: [], total_cost_krw: 0 };
   state.routineSelectedIds.clear();
   state.routineKnownSavedIds.clear();
   document.querySelector("#results").innerHTML = "";
   document.querySelector("#compareTable").innerHTML = "";
   document.querySelector("#compareTable").classList.add("hidden");
-  document.querySelector("#followUpForm").classList.add("hidden");
   setStatus(text("reset"));
   renderProfile({});
   renderRoutine();

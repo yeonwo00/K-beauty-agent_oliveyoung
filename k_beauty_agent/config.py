@@ -41,6 +41,16 @@ def openai_model() -> str:
     return os.getenv("OPENAI_MODEL", "gpt-5.4-mini")
 
 
+def follow_up_llm_enabled() -> bool:
+    enabled = os.getenv("FOLLOW_UP_LLM_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
+    return enabled and bool(os.getenv("OPENAI_API_KEY"))
+
+
+def product_reason_llm_enabled() -> bool:
+    enabled = os.getenv("PRODUCT_REASON_LLM_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
+    return enabled and bool(os.getenv("OPENAI_API_KEY"))
+
+
 def session_secret() -> str:
     return _secret_env("SESSION_SECRET", "dev-session-secret-change-me")
 

@@ -20,16 +20,19 @@ from .config import (
     DEFAULT_REVIEWS_CSV,
     admin_token,
     external_cache_path,
+    follow_up_llm_enabled,
     product_source,
+    product_reason_llm_enabled,
     secure_cookies,
     sqlite_path_from_url,
 )
 from .database import ProductDatabase
+from .followup_parser import parse_follow_up_patch
 from .live_products import LiveProductDatabase
-from .llm import HybridExplainer
+from .llm import HybridExplainer, ProductReasonExplainer
 from .localization import format_recommendation_text
 from .openai_client import OpenAIResponsesClient
-from .personalization import build_personalization, profile_to_dict
+from .personalization import apply_profile_patch, build_personalization, profile_to_dict
 from .serializers import product_to_dict, recommendation_to_dict
 from .storage import SQLiteStore, hash_session
 
@@ -189,6 +192,15 @@ def reset_session(response: Response, session_id: str = Depends(_session_id)) ->
     return {"ok": True}
 
 
+@app.delete("/api/profile")
+def reset_profile(request: Request, response: Response, session_id: str = Depends(_session_id)) -> dict[str, object]:
+    store.ensure_session(session_id)
+    store.save_profile(session_id, {})
+    store.log_event("profile_reset", {}, session_id=session_id)
+    _set_cookie(response, session_id, request)
+    return {"ok": True, "profile": {}}
+
+
 @app.get("/api/products")
 def products() -> dict[str, object]:
     return {
@@ -276,10 +288,29 @@ def _recommend(payload: RecommendRequest, request: Request, response: Response, 
     feedback_rows = store.feedback_for_session(session_id)
     personalization = build_personalization(agent.database.products, feedback_rows)
     recent_queries = store.recent_queries(session_id, 5) if is_follow_up else []
+    stored_profile = session["profile"] if is_follow_up else None
+    follow_up_parser_status = "rule_only"
+    if is_follow_up and follow_up_llm_enabled():
+        try:
+            patch = parse_follow_up_patch(
+                payload.query,
+                stored_profile=stored_profile,
+                recent_queries=recent_queries,
+                client=OpenAIResponsesClient(store=store, session_id=session_id),
+                language=payload.language,
+            )
+            if patch:
+                stored_profile = apply_profile_patch(stored_profile, patch)
+                follow_up_parser_status = "llm_ok"
+            else:
+                follow_up_parser_status = "llm_empty"
+        except Exception as exc:
+            follow_up_parser_status = "llm_fallback"
+            store.log_event("follow_up_parser_error", {"error": str(exc)[:500]}, session_id=session_id)
     recommendation = agent.recommend(
         payload.query,
         limit=payload.limit,
-        stored_profile=session["profile"] if is_follow_up else None,
+        stored_profile=stored_profile,
         recent_queries=recent_queries,
         personalization=personalization,
     )
@@ -294,13 +325,29 @@ def _recommend(payload: RecommendRequest, request: Request, response: Response, 
             openai_status = "fallback"
             store.log_event("openai_error", {"error": str(exc)[:500]}, session_id=session_id)
 
+    product_reason_status = "fallback"
+    product_reasons: dict[str, str] = {}
+    if product_reason_llm_enabled():
+        try:
+            product_reasons = ProductReasonExplainer(OpenAIResponsesClient(store=store, session_id=session_id)).explain_reasons(
+                recommendation,
+                language=payload.language,
+            )
+            product_reason_status = "ok" if product_reasons else "empty"
+        except Exception as exc:
+            product_reason_status = "fallback"
+            store.log_event("product_reason_error", {"error": str(exc)[:500]}, session_id=session_id)
+
     result = recommendation_to_dict(
         recommendation,
         grounded_explanation=explanation,
         openai_status=openai_status,
         language=payload.language,
+        product_reasons=product_reasons,
     )
     result["product_source_status"] = _product_source_status()
+    result["follow_up_parser_status"] = follow_up_parser_status
+    result["product_reason_status"] = product_reason_status
     latency_ms = int((time.perf_counter() - started) * 1000)
     recommendation_id = store.add_recommendation(session_id, payload.query, recommendation.decision, result, latency_ms)
     result["recommendation_id"] = recommendation_id

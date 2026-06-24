@@ -31,7 +31,21 @@ uvicorn k_beauty_agent.web:app --host 0.0.0.0 --port 8001 --reload
 브라우저에서 `http://127.0.0.1:8001`을 열면 개인화 세션, 후속질문, liked/disliked 피드백, 유사 제품, 추천 이유 시각화를 사용할 수 있습니다.
 기존 curated 앱을 8000번에 띄우고 이 live 앱을 8001번에 띄우면 두 버전을 나란히 비교할 수 있습니다.
 
-환경변수 예시는 `.env.example`에 있습니다. `OPENAI_API_KEY`가 없거나 API 호출이 실패하면 rule-only 설명으로 fallback합니다.
+환경변수 예시는 `.env.example`에 있습니다. `OPENAI_API_KEY`가 없거나 API 호출이 실패하면 rule-only 설명과 rule-based 후속 조건 parser로 fallback합니다.
+
+## LLM-assisted follow-up parsing
+
+후속 조건 입력은 기본 rule parser를 유지하되, `OPENAI_API_KEY`가 있고 `FOLLOW_UP_LLM_ENABLED=true`이면 LLM을 보조 parser로 사용합니다.
+LLM은 제품을 직접 추천하지 않고 사용자의 자연어 후속 요청을 `SkinProfile` 조건으로만 구조화합니다.
+
+- 예: `히알루론산 빼고 3만원 이상의 산뜻한 세럼` → `avoid_ingredients=["hyaluronic acid"]`, `min_price_krw=30000`, `texture_preference="lightweight"`, `desired_categories=["serum"]`
+- 허용된 피부 타입, 고민, 카테고리, 제형 값만 통과합니다.
+- 알러지/피해야 할 성분은 추천 엔진의 기존 전성분 필터가 계속 처리합니다.
+- LLM 응답이 비어 있거나 파싱에 실패하면 기존 rule parser가 그대로 동작합니다.
+
+`PRODUCT_REASON_LLM_ENABLED=true`이면 추천 카드의 “추천 이유” 문장도 LLM으로 보강합니다.
+이때 LLM은 내부 점수나 순위를 만들지 않고, 이미 계산된 사용자 조건, 제품 카테고리, 가격, 피부 적합도, 매칭 성분, 주의점만 바탕으로 설명문을 씁니다.
+API key가 없거나 실패하면 rule 기반 추천 이유 문장으로 자동 fallback합니다.
 
 ## Keyless live product source
 
@@ -56,6 +70,8 @@ OLIVEYOUNG_SNAPSHOT_HTML_DIR=data/oliveyoung_snapshots
 OPEN_BEAUTY_FACTS_API_URL=https://world.openbeautyfacts.org/cgi/search.pl
 COSING_API_URL=https://ec.europa.eu/growth/tools-databases/cosing/api/ingredients
 KRW_PER_USD=1350
+FOLLOW_UP_LLM_ENABLED=true
+PRODUCT_REASON_LLM_ENABLED=true
 ```
 
 Live provider 정책:

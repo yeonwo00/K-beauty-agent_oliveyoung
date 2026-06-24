@@ -55,6 +55,11 @@ def merge_profiles(stored: dict[str, Any] | None, query: str, recent_queries: li
     for profile in (recent_profile, query_profile):
         if profile.skin_type:
             merged.skin_type = profile.skin_type
+        if profile.desired_categories:
+            if profile is query_profile:
+                merged.desired_categories = list(profile.desired_categories)
+            else:
+                _extend_unique(merged.desired_categories, profile.desired_categories)
         if profile.max_price_usd is not None:
             merged.max_price_usd = profile.max_price_usd
         if profile.max_price_krw is not None:
@@ -68,12 +73,41 @@ def merge_profiles(stored: dict[str, Any] | None, query: str, recent_queries: li
         if profile.pregnant_or_nursing is not None:
             merged.pregnant_or_nursing = profile.pregnant_or_nursing
         for field in PROFILE_LIST_FIELDS:
+            if field == "desired_categories":
+                continue
             _extend_unique(getattr(merged, field), getattr(profile, field))
 
     if query_profile.location_or_climate:
         merged.location_or_climate = query_profile.location_or_climate
     _refresh_uncertainty(merged)
     return merged
+
+
+def apply_profile_patch(stored: dict[str, Any] | None, patch: dict[str, Any]) -> dict[str, Any]:
+    merged = profile_from_dict(stored)
+    for field in PROFILE_LIST_FIELDS:
+        values = patch.get(field)
+        if isinstance(values, list):
+            if field == "desired_categories":
+                merged.desired_categories = list(values)
+            else:
+                _extend_unique(getattr(merged, field), values)
+
+    for field in (
+        "skin_type",
+        "texture_preference",
+        "location_or_climate",
+        "pregnant_or_nursing",
+        "max_price_usd",
+        "max_price_krw",
+        "min_price_usd",
+        "min_price_krw",
+    ):
+        if field in patch and patch[field] is not None:
+            setattr(merged, field, patch[field])
+
+    _refresh_uncertainty(merged)
+    return profile_to_dict(merged)
 
 
 def build_personalization(products: list[Product], feedback_rows: list[dict[str, Any]]) -> dict[str, set[str]]:

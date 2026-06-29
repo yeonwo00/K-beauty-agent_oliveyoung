@@ -17,6 +17,22 @@ This repository is structured as a portfolio project: the backend is intentional
 - FastAPI backend
 - Render deployment ready
 
+## Design
+
+This project intentionally combines deterministic recommendation rules with LLM-generated explanations.
+
+The recommendation itself is generated through rule-based logic for consistency and reproducibility, while the LLM is responsible for natural-language explanation, product comparison, and review summarization.
+
+This hybrid design improves controllability and reduces hallucinations compared to using an LLM alone.
+
+## Deployment
+
+Backend: Render
+
+- **Backend:** Render
+- **API Documentation:** `/docs`
+- **Status:** Production-ready demo
+
 ## Tech Stack
 
 - Python
@@ -89,6 +105,40 @@ k-beauty-agent/
 - `docs/`: Architecture, demo scenarios, and API documentation.
 - `tests/`: Automated tests for the recommendation workflow and API behavior.
 
+## Agent Workflow
+
+```text
+User Query
+
+↓
+
+Input Validation
+
+↓
+
+Product Filtering
+
+↓
+
+Rule-based Ranking
+
+↓
+
+Prompt Construction
+
+↓
+
+OpenAI API
+
+↓
+
+Post-processing
+
+↓
+
+JSON Response
+```
+
 ## How to Run
 
 ```bash
@@ -120,29 +170,31 @@ curl -X POST http://127.0.0.1:8000/api/recommend \
   }'
 ```
 
-## What to See
-- LLM API integration
-- Agent workflow design
-- FastAPI backend development
-- Deployment using Render
-- Recommendation logic design
+## Key Takeaways
+- Designing an end-to-end LLM application architecture
+- Building REST APIs using FastAPI
+- Prompt engineering for structured recommendation tasks
+- Deploying production-style services using Render
+- Designing controllable AI workflows with rule-based reasoning
+
+## Challenges
+
+- Designing a recommendation workflow before calling the LLM
+- Structuring prompts for consistent bilingual responses
+- Separating recommendation logic from explanation generation
+- Building a lightweight backend suitable for deployment
 
 ## Future Works
 - Real product database integration
-- User feedback-based ranking
 - RAG-based product retrieval
+- User feedback-based learning
+- Automated evaluation pipeline
 - Safety filtering for skincare advice
-
-## Commit History
-- Initial project setup
-- Add FastAPI backend
-- Add recommendation workflow
-- Add prompt templates
-- Add sample product data
-- Add API documentation
-- Add README and project docs
-- Deploy service on Render
+- Multi-agent workflow
 
 ## Notes
 
 This project is a recommendation-system demo, not medical advice. Product matches are based on a small sample dataset and simplified skin-care rules for portfolio demonstration purposes.
+
+## Demo
+https://k-beauty-agent-lq0v.onrender.com/#quiz

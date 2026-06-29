@@ -53,7 +53,6 @@ Response Formatter
 JSON Response
 ```
 
-![Architecture](docs/architecture.png)
 
 ## Project Structure
 

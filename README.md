@@ -99,38 +99,28 @@ curl -X POST http://127.0.0.1:8000/api/recommend \
   }'
 ```
 
-## Environment Variables
+## What to See
+- LLM API integration
+- Agent workflow design
+- FastAPI backend development
+- Deployment using Render
+- Recommendation logic design
 
-Copy `.env.example` to `.env` if you want to enable LLM-assisted explanations.
+## Future Works
+- Real product database integration
+- User feedback-based ranking
+- RAG-based product retrieval
+- Safety filtering for skincare advice
 
-```bash
-cp .env.example .env
-```
-
-The service works without an OpenAI API key. When `OPENAI_API_KEY` is missing, it returns grounded rule-based explanations.
-When an API key is provided, OpenAI is used for product-specific `why_recommended` explanations, overall recommendation summaries, and `/api/compare` product comparisons.
-
-## Product Comparison
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/compare \
-  -H "Content-Type: application/json" \
-  -d '{
-    "product_ids": ["kb-001", "kb-004"],
-    "skin_type": "oily",
-    "concerns": ["pores", "oil_control"],
-    "preferences": ["lightweight"],
-    "language": "en"
-  }'
-```
-
-The comparison endpoint uses the selected products' ingredients, skin type fit, functions, price, and review signals. It falls back to a deterministic comparison when `OPENAI_API_KEY` is not set.
-
-## Tests
-
-```bash
-python -m pytest -q
-```
+## Commit History
+- Initial project setup
+- Add FastAPI backend
+- Add recommendation workflow
+- Add prompt templates
+- Add sample product data
+- Add API documentation
+- Add README and project docs
+- Deploy service on Render
 
 ## Notes
 

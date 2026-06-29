@@ -28,7 +28,29 @@ This repository is structured as a portfolio project: the backend is intentional
 ## Architecture
 
 ```text
-User Input -> FastAPI Server -> Agent Workflow -> Recommendation Rules -> LLM Response -> API Response
+User
+   │
+   ▼
+FastAPI REST API
+   │
+   ▼
+Input Validation
+   │
+   ▼
+Recommendation Engine
+   │
+   ├── Rule-based Filtering
+   ├── Product Ranking
+   └── Prompt Generation
+            │
+            ▼
+OpenAI API
+            │
+            ▼
+Response Formatter
+            │
+            ▼
+JSON Response
 ```
 
 ![Architecture](docs/architecture.png)

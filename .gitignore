@@ -1,9 +1,15 @@
+.env
 .venv/
+venv/
 __pycache__/
-*.pyc
+*.py[cod]
 .pytest_cache/
-*Zone.Identifier
-data/*.sqlite3
-data/올리브영 온라인몰.html
-data/올리브영 온라인몰_files/
-data/oliveyoung_snapshots/*.html
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.sqlite
+*.sqlite3
+*.db
+*.log
+.DS_Store

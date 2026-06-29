@@ -10,7 +10,9 @@ This repository is structured as a portfolio project: the backend is intentional
 
 - Personalized K-beauty product recommendation
 - Rule-based recommendation logic
-- LLM-powered response generation
+- LLM-powered recommendation explanations
+- LLM-assisted product comparison
+- Positive/critical review snippets and review summaries
 - Korean/English bilingual support
 - FastAPI backend
 - Render deployment ready
@@ -106,6 +108,23 @@ cp .env.example .env
 ```
 
 The service works without an OpenAI API key. When `OPENAI_API_KEY` is missing, it returns grounded rule-based explanations.
+When an API key is provided, OpenAI is used for product-specific `why_recommended` explanations, overall recommendation summaries, and `/api/compare` product comparisons.
+
+## Product Comparison
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/compare \
+  -H "Content-Type: application/json" \
+  -d '{
+    "product_ids": ["kb-001", "kb-004"],
+    "skin_type": "oily",
+    "concerns": ["pores", "oil_control"],
+    "preferences": ["lightweight"],
+    "language": "en"
+  }'
+```
+
+The comparison endpoint uses the selected products' ingredients, skin type fit, functions, price, and review signals. It falls back to a deterministic comparison when `OPENAI_API_KEY` is not set.
 
 ## Tests
 

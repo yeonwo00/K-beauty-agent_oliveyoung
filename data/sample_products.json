@@ -4,65 +4,89 @@
     "name": "Green Tea Oil-Control Gel Cream",
     "brand": "K-Beauty Lab",
     "category": "moisturizer",
+    "price_krw": 24000,
     "ingredients": ["Green Tea Extract", "Niacinamide", "Zinc PCA", "Hyaluronic Acid"],
     "suited_skin_types": ["oily", "combination"],
     "concerns": ["oil_control", "pores", "hydration"],
     "tags": ["lightweight", "gel", "non-greasy"],
-    "avoid_for": []
+    "avoid_for": [],
+    "positive_review": "Feels light under makeup and helps my T-zone look less shiny during the day.",
+    "critical_review": "It may not be moisturizing enough for dry cheeks in winter.",
+    "review_summary": "Reviews are strongest around lightweight texture, oil-control finish, and easy daytime use."
   },
   {
     "id": "kb-002",
     "name": "Ceramide Barrier Repair Cream",
     "brand": "Seoul Derm Lab",
     "category": "cream",
+    "price_krw": 28000,
     "ingredients": ["Ceramide NP", "Panthenol", "Glycerin", "Centella Asiatica"],
     "suited_skin_types": ["dry", "sensitive", "combination"],
     "concerns": ["barrier_support", "hydration", "redness"],
     "tags": ["fragrance-free", "rich", "soothing"],
-    "avoid_for": []
+    "avoid_for": [],
+    "positive_review": "Helped calm tight skin and made my barrier feel more comfortable overnight.",
+    "critical_review": "The texture can feel heavy for very oily skin.",
+    "review_summary": "Reviews highlight barrier comfort, rich hydration, and a better fit for dry or sensitive routines."
   },
   {
     "id": "kb-003",
     "name": "Mugwort Calming Toner",
     "brand": "Hanbang Beauty",
     "category": "toner",
+    "price_krw": 19000,
     "ingredients": ["Mugwort Extract", "Panthenol", "Betaine", "Allantoin"],
     "suited_skin_types": ["sensitive", "combination", "oily"],
     "concerns": ["redness", "barrier_support", "hydration"],
     "tags": ["fragrance-free", "lightweight", "calming"],
-    "avoid_for": []
+    "avoid_for": [],
+    "positive_review": "Soaks in quickly and feels calming when my skin looks flushed.",
+    "critical_review": "The watery texture may feel too simple for users who want strong hydration.",
+    "review_summary": "Reviews point to a gentle, light toner that works best for calming and layering."
   },
   {
     "id": "kb-004",
     "name": "BHA Pore Clarifying Liquid",
     "brand": "Clear Skin Korea",
     "category": "exfoliant",
+    "price_krw": 22000,
     "ingredients": ["Salicylic Acid", "Green Tea Extract", "Glycerin"],
     "suited_skin_types": ["oily", "combination"],
     "concerns": ["acne", "pores", "oil_control"],
     "tags": ["exfoliating", "pore-care"],
-    "avoid_for": ["sensitive"]
+    "avoid_for": ["sensitive"],
+    "positive_review": "Useful for oily areas and clogged pores when used a few nights a week.",
+    "critical_review": "Can sting or feel drying if my skin barrier is already weak.",
+    "review_summary": "Reviews are positive for pore care and oil control, but caution against overuse on sensitive skin."
   },
   {
     "id": "kb-005",
     "name": "Rice Glow Hydrating Serum",
     "brand": "Glow Seoul",
     "category": "serum",
+    "price_krw": 26000,
     "ingredients": ["Rice Extract", "Niacinamide", "Glycerin", "Squalane"],
     "suited_skin_types": ["dry", "normal", "combination"],
     "concerns": ["hydration", "dullness", "barrier_support"],
     "tags": ["glow", "lightweight"],
-    "avoid_for": []
+    "avoid_for": [],
+    "positive_review": "Gives a soft glow without feeling sticky and layers well with cream.",
+    "critical_review": "Results for dullness are subtle and take consistent use.",
+    "review_summary": "Reviews favor glow, hydration, and layering, with more modest feedback on visible brightening."
   },
   {
     "id": "kb-006",
     "name": "Daily Mild Sunscreen",
     "brand": "Sun Seoul",
     "category": "sunscreen",
+    "price_krw": 21000,
     "ingredients": ["Zinc Oxide", "Centella Asiatica", "Panthenol"],
     "suited_skin_types": ["sensitive", "dry", "combination"],
     "concerns": ["redness", "barrier_support"],
     "tags": ["fragrance-free", "daily", "mild"],
-    "avoid_for": []
+    "avoid_for": [],
+    "positive_review": "Feels mild and comfortable for daily use when my skin is irritated.",
+    "critical_review": "May leave a slight cast depending on skin tone and amount applied.",
+    "review_summary": "Reviews describe a mild daily sunscreen with calming ingredients and some texture tradeoffs."
   }
 ]

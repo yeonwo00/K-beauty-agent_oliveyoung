@@ -13,11 +13,15 @@ class Product:
     name: str
     brand: str
     category: str
+    price_krw: int | None
     ingredients: list[str]
     suited_skin_types: list[str]
     concerns: list[str]
     tags: list[str]
     avoid_for: list[str]
+    positive_review: str
+    critical_review: str
+    review_summary: str
 
 
 @dataclass
@@ -62,11 +66,15 @@ def load_products(path: Path) -> list[Product]:
             name=item["name"],
             brand=item["brand"],
             category=item["category"],
+            price_krw=item.get("price_krw"),
             ingredients=item["ingredients"],
             suited_skin_types=item["suited_skin_types"],
             concerns=item["concerns"],
             tags=item["tags"],
             avoid_for=item.get("avoid_for", []),
+            positive_review=item.get("positive_review", "Users liked the overall texture and routine fit."),
+            critical_review=item.get("critical_review", "Some users wanted more detailed product data."),
+            review_summary=item.get("review_summary", "Reviews suggest this product can fit the matching skin-care routine."),
         )
         for item in raw_products
     ]
@@ -95,6 +103,10 @@ class RuleBasedRecommender:
         ]
         ranked = sorted(scored, key=lambda item: item.score, reverse=True)
         return [item for item in ranked if item.score > 0][: request.limit], trace
+
+    def find_products(self, product_ids: list[str]) -> list[Product]:
+        by_id = {product.id: product for product in self.products}
+        return [by_id[product_id] for product_id in product_ids if product_id in by_id]
 
     def _score_product(
         self,

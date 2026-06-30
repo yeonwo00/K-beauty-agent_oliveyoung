@@ -6,6 +6,19 @@ K-Beauty Recommendation Agent is a FastAPI-based AI service that recommends Kore
 
 This repository is structured as a portfolio project: the backend is intentionally compact, readable, and easy to run locally while still showing a practical rule-first AI product workflow.
 
+The goal is to demonstrate practical AI application development, including API design, agent workflows, and deployment.
+
+
+## Demo
+
+Live Demo:
+
+https://k-beauty-agent-lq0v.onrender.com/
+
+API Docs:
+
+https://k-beauty-agent-lq0v.onrender.com/docs
+
 ## Key Features
 
 - Personalized K-beauty product recommendation
@@ -17,29 +30,13 @@ This repository is structured as a portfolio project: the backend is intentional
 - FastAPI backend
 - Render deployment ready
 
-## Design
+## Design Decision
 
 This project intentionally combines deterministic recommendation rules with LLM-generated explanations.
 
 The recommendation itself is generated through rule-based logic for consistency and reproducibility, while the LLM is responsible for natural-language explanation, product comparison, and review summarization.
 
 This hybrid design improves controllability and reduces hallucinations compared to using an LLM alone.
-
-## Deployment
-
-Backend: Render
-
-- **Backend:** Render
-- **API Documentation:** `/docs`
-- **Status:** Production-ready demo
-
-## Tech Stack
-
-- Python
-- FastAPI
-- OpenAI API
-- Render
-- GitHub
 
 ## Architecture
 
@@ -68,6 +65,21 @@ Response Formatter
             ▼
 JSON Response
 ```
+
+## Deployment
+
+- **Backend:** Render
+- **API Documentation:** `/docs`
+- **Status:** Production-ready demo
+
+## Tech Stack
+
+- Python
+- FastAPI
+- OpenAI API
+- Render
+- GitHub
+
 
 
 ## Project Structure
@@ -105,39 +117,6 @@ k-beauty-agent/
 - `docs/`: Architecture, demo scenarios, and API documentation.
 - `tests/`: Automated tests for the recommendation workflow and API behavior.
 
-## Agent Workflow
-
-```text
-User Query
-
-↓
-
-Input Validation
-
-↓
-
-Product Filtering
-
-↓
-
-Rule-based Ranking
-
-↓
-
-Prompt Construction
-
-↓
-
-OpenAI API
-
-↓
-
-Post-processing
-
-↓
-
-JSON Response
-```
 
 ## How to Run
 
@@ -195,6 +174,3 @@ curl -X POST http://127.0.0.1:8000/api/recommend \
 ## Notes
 
 This project is a recommendation-system demo, not medical advice. Product matches are based on a small sample dataset and simplified skin-care rules for portfolio demonstration purposes.
-
-## Demo
-https://k-beauty-agent-lq0v.onrender.com/#quiz

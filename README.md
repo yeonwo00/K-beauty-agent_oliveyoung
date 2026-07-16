@@ -74,11 +74,13 @@ JSON Response
 
 ## Tech Stack
 
-- Python
+- Python 3.12
 - FastAPI
+- Pydantic
 - OpenAI API
+- Uvicorn
 - Render
-- GitHub
+- pytest
 
 
 
@@ -129,11 +131,17 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Open the API docs:
+## Open the API docs:
 
-```text
+uvicorn app.main:app --reload
+
+Local API Docs :
+
 http://127.0.0.1:8000/docs
-```
+
+Production Demo :
+
+https://k-beauty-agent-lq0v.onrender.com/docs
 
 ## Example Request
 
@@ -170,6 +178,8 @@ curl -X POST http://127.0.0.1:8000/api/recommend \
 - Automated evaluation pipeline
 - Safety filtering for skincare advice
 - Multi-agent workflow
+- Recommendation history
+- Vector database integration
 
 ## Notes
 

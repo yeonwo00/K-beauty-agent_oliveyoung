@@ -511,7 +511,13 @@ class PersonalizedServiceApiTest(unittest.TestCase):
         os.environ["SESSION_SECRET"] = "test-session-secret"
         os.environ["SECURE_COOKIES"] = "false"
         os.environ["COOKIE_SAMESITE"] = "lax"
-        os.environ["CORS_ALLOW_ORIGINS"] = "https://yeonwo00.github.io"
+        os.environ["RECOMMEND_RATE_LIMIT_REQUESTS"] = "1000"
+        os.environ["RECOMMEND_RATE_LIMIT_WINDOW_SECONDS"] = "60"
+        os.environ["CORS_ALLOW_ORIGINS"] = (
+            "https://yeonwo00.github.io,"
+            "https://k-beauty-agent.apps.tossmini.com,"
+            "https://k-beauty-agent.private-apps.tossmini.com"
+        )
         os.environ.pop("OPENAI_API_KEY", None)
         import k_beauty_agent.web as web
 
@@ -529,6 +535,128 @@ class PersonalizedServiceApiTest(unittest.TestCase):
         second = self.client.get("/api/session", cookies={self.web.SESSION_COOKIE: cookie})
         self.assertEqual(second.status_code, 200)
         self.assertEqual(first.json()["session_id_hash"], second.json()["session_id_hash"])
+
+    def test_apps_in_toss_header_session_is_reused_without_cookies(self) -> None:
+        token = "miniapp-session_1234567890"
+        first = self.client.get(
+            "/api/session",
+            headers={self.web.SESSION_HEADER: token},
+        )
+        second = self.client.get(
+            "/api/session",
+            headers={self.web.SESSION_HEADER: token},
+        )
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(first.json()["session_id_hash"], second.json()["session_id_hash"])
+        self.assertEqual(first.json()["session_id_hash"], self.web.hash_session(token))
+
+    def test_apps_in_toss_header_session_rejects_unsafe_tokens(self) -> None:
+        response = self.client.get(
+            "/api/session",
+            headers={self.web.SESSION_HEADER: "too short/unsafe"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_apps_in_toss_header_takes_priority_and_isolates_profiles(self) -> None:
+        cookie_session = self.client.get("/api/session")
+        self.assertEqual(cookie_session.status_code, 200)
+        header_token = "miniapp-profile_1234567890"
+
+        recommendation = self.client.post(
+            "/api/recommend",
+            headers={self.web.SESSION_HEADER: header_token},
+            json={
+                "query": "이 문장은 구조화 입력보다 우선하면 안 됩니다",
+                "limit": 3,
+                "use_openai": False,
+                "language": "ko",
+                "profile": {
+                    "skin_type": "dry",
+                    "concerns": ["hydration"],
+                    "desired_categories": ["moisturizer"],
+                    "avoid_ingredients": ["fragrance"],
+                    "max_price_krw": 30000,
+                },
+            },
+        )
+        self.assertEqual(recommendation.status_code, 200)
+
+        header_session = self.client.get(
+            "/api/session",
+            headers={self.web.SESSION_HEADER: header_token},
+        )
+        self.assertEqual(header_session.json()["session_id_hash"], self.web.hash_session(header_token))
+        self.assertEqual(header_session.json()["profile"]["skin_type"], "dry")
+        self.assertEqual(cookie_session.json()["profile"], {})
+
+    def test_structured_miniapp_profile_preserves_skin_and_avoid_constraints(self) -> None:
+        response = self.client.post(
+            "/api/recommend",
+            headers={self.web.SESSION_HEADER: "miniapp-constraints_1234567890"},
+            json={
+                "query": (
+                    "피부 타입은 보통(normal)이고 토너를 추천해줘. "
+                    "건조함과 유분 조절이 고민이고 살리실산, 티트리 없이 보여줘."
+                ),
+                "limit": 5,
+                "use_openai": False,
+                "language": "ko",
+                "profile": {
+                    "skin_type": "normal",
+                    "concerns": ["dryness", "oil_control"],
+                    "desired_categories": ["toner"],
+                    "avoid_ingredients": ["salicylic acid", "tea tree"],
+                    "max_price_krw": 30000,
+                },
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        profile = data["profile"]
+        self.assertEqual(profile["skin_type"], "normal")
+        self.assertEqual(profile["concerns"], ["dryness", "oil_control"])
+        self.assertEqual(profile["desired_categories"], ["toner"])
+        self.assertEqual(profile["avoid_ingredients"], ["salicylic acid", "tea tree"])
+        self.assertEqual(profile["preferred_ingredients"], [])
+        self.assertIsNone(profile["texture_preference"])
+        self.assertTrue(data["results"])
+
+        forbidden = {"salicylic acid", "tea tree"}
+        for item in data["results"]:
+            self.assertEqual(item["product"]["category"], "toner")
+            canonical_ingredients = {
+                evidence.name
+                for ingredient in item["product"]["ingredients"]
+                if (evidence := find_evidence_for_ingredient(ingredient)) is not None
+            }
+            self.assertFalse(canonical_ingredients & forbidden)
+
+    def test_recommendation_endpoint_rate_limits_by_ip_and_session(self) -> None:
+        os.environ["RECOMMEND_RATE_LIMIT_REQUESTS"] = "2"
+        self.web._rate_limit_buckets.clear()
+        payload = {
+            "query": "지성 피부 토너 추천",
+            "limit": 1,
+            "use_openai": False,
+            "language": "ko",
+        }
+        headers = {self.web.SESSION_HEADER: "miniapp-rate-limit_1234567890"}
+        try:
+            first = self.client.post("/api/recommend", headers=headers, json=payload)
+            second = self.client.post("/api/recommend", headers=headers, json=payload)
+            limited = self.client.post("/api/recommend", headers=headers, json=payload)
+        finally:
+            os.environ["RECOMMEND_RATE_LIMIT_REQUESTS"] = "1000"
+            self.web._rate_limit_buckets.clear()
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(limited.status_code, 429)
+        self.assertEqual(limited.headers["retry-after"], "60")
 
     def test_secure_cookie_can_be_enabled(self) -> None:
         os.environ["SECURE_COOKIES"] = "true"
@@ -563,6 +691,20 @@ class PersonalizedServiceApiTest(unittest.TestCase):
         self.assertEqual(preflight.status_code, 200)
         self.assertEqual(preflight.headers["access-control-allow-origin"], "https://yeonwo00.github.io")
         self.assertEqual(preflight.headers["access-control-allow-credentials"], "true")
+
+        toss_preflight = client.options(
+            "/api/recommend",
+            headers={
+                "Origin": "https://k-beauty-agent.private-apps.tossmini.com",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type,x-kbeauty-session",
+            },
+        )
+        self.assertEqual(toss_preflight.status_code, 200)
+        self.assertEqual(
+            toss_preflight.headers["access-control-allow-origin"],
+            "https://k-beauty-agent.private-apps.tossmini.com",
+        )
 
     def test_recommend_followup_feedback_and_openai_fallback(self) -> None:
         response = self.client.post(

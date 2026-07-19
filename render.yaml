@@ -24,11 +24,15 @@ services:
       - key: SESSION_SECRET
         generateValue: true
       - key: CORS_ALLOW_ORIGINS
-        value: https://yeonwo00.github.io,https://201younghanlee.github.io
+        value: https://yeonwo00.github.io,https://201younghanlee.github.io,https://k-beauty-agent.apps.tossmini.com,https://k-beauty-agent.private-apps.tossmini.com
       - key: COOKIE_SAMESITE
         value: none
       - key: SECURE_COOKIES
         value: "true"
+      - key: RECOMMEND_RATE_LIMIT_REQUESTS
+        value: "30"
+      - key: RECOMMEND_RATE_LIMIT_WINDOW_SECONDS
+        value: "60"
       - key: DATABASE_URL
         value: sqlite:////tmp/k_beauty_agent.sqlite3
       - key: PRODUCT_SOURCE

@@ -9,6 +9,25 @@ A bilingual K-beauty product recommendation web app built with FastAPI. It combi
 - Health check: https://k-beauty-agent-lq0v.onrender.com/health
 - GitHub Pages client: https://yeonwo00.github.io/K-beauty-agent_oliveyoung/
 
+## Apps in Toss miniapp
+
+The `miniapp/` directory contains a separate React, TypeScript, and Vite client packaged with the stable Apps in Toss WebView SDK 2. It keeps the existing public website intact while reusing the same Render recommendation API.
+
+```bash
+cd miniapp
+pnpm install --frozen-lockfile
+pnpm run dev
+pnpm run build
+```
+
+The miniapp identifier is `k-beauty-agent`. After uploading a build, QR testing uses `intoss-private://k-beauty-agent?_deploymentId=<deploymentId>`; the production deep link is `intoss://k-beauty-agent`. The build command produces the `.ait` package used by the Apps in Toss console. Before the first console upload:
+
+1. Create a non-game WebView app with the immutable app name `k-beauty-agent` and display name `K-Beauty Agent`.
+2. Upload `miniapp/public/app-icon.png` as the 600 x 600 opaque app logo, then copy the console image URL into `miniapp/granite.config.ts`.
+3. Upload the generated `.ait` package and complete at least one QR test before requesting review.
+
+The client uses the SDK `Storage`, `SafeAreaInsets`, and `openURL` APIs. API calls use an anonymous `X-KBeauty-Session` token instead of depending on third-party cookies, which are blocked by iOS WebViews. The production and QR-test Toss origins are included in the backend CORS allowlist.
+
 ## Product capabilities
 
 - Korean and English skin quiz
@@ -18,6 +37,7 @@ A bilingual K-beauty product recommendation web app built with FastAPI. It combi
 - Anonymous session, feedback, and operational metrics storage
 - Optional OpenAI explanations with rule-only fallback
 - Admin metrics endpoints protected by `X-Admin-Token`
+- Per-IP and anonymous-session recommendation rate limiting
 - Render Blueprint, health check, secure cookie options, and GitHub Actions tests
 
 ## Architecture
@@ -34,6 +54,11 @@ FastAPI web app
   `-- optional OpenAI explanation layer
           |
           `-- disabled safely when no key or public LLM flag is off
+
+Apps in Toss WebView
+  |-- React/TypeScript mobile quiz and recommendations
+  |-- SDK safe-area, storage, and external-link integration
+  `-- HTTPS request to the same FastAPI recommendation API
 ```
 
 Recommendation ranking is calculated from repository data and deterministic rules. The LLM is limited to parsing optional follow-up constraints and explaining already-ranked results; it does not select unsupported products or invent product attributes.
@@ -97,6 +122,7 @@ The free Render configuration stores SQLite session and feedback data under `/tm
 
 ```text
 k_beauty_agent/     production recommendation engine and FastAPI web app
+miniapp/             Apps in Toss SDK 2 WebView client and build config
 static/             bilingual product UI and admin page
 data/               curated products, reviews, and source snapshots
 tests/              recommendation, personalization, source, and config tests
@@ -115,7 +141,9 @@ app/ and agent/     compact reference API retained for portfolio examples
 | `SESSION_SECRET` | HMAC key for anonymized session logging | generated |
 | `PRODUCT_SOURCE` | `curated` or optional `live_keyless` data layer | `curated` |
 | `DATABASE_URL` | SQLite storage URL | `/tmp` on free Render |
-| `CORS_ALLOW_ORIGINS` | Comma-separated trusted browser origins | repository Pages origins |
+| `CORS_ALLOW_ORIGINS` | Comma-separated trusted browser origins | repository Pages and Apps in Toss origins |
+| `RECOMMEND_RATE_LIMIT_REQUESTS` | Recommendation requests allowed per rate-limit window | `30` |
+| `RECOMMEND_RATE_LIMIT_WINDOW_SECONDS` | Recommendation rate-limit window | `60` |
 
 See `.env.example` for the complete local configuration.
 

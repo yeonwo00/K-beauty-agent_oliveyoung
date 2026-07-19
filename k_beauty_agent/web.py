@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import secrets
 import time
 import uuid
+from collections import OrderedDict, deque
 from pathlib import Path
+from threading import Lock
 from typing import Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
@@ -27,11 +30,13 @@ from .config import (
     product_source,
     product_reason_llm_enabled,
     public_llm_enabled,
+    recommend_rate_limit_requests,
+    recommend_rate_limit_window_seconds,
     secure_cookies,
     sqlite_path_from_url,
 )
 from .database import ProductDatabase
-from .followup_parser import parse_follow_up_patch
+from .followup_parser import parse_follow_up_patch, sanitize_profile_patch
 from .live_products import LiveProductDatabase
 from .llm import HybridExplainer, ProductReasonExplainer
 from .localization import format_recommendation_text
@@ -41,11 +46,16 @@ from .serializers import product_to_dict, recommendation_to_dict
 from .storage import SQLiteStore, hash_session
 
 SESSION_COOKIE = "kbeauty_session_id"
+SESSION_HEADER = "X-KBeauty-Session"
+SESSION_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{20,128}$")
 COOKIE_MAX_AGE = 30 * 86400
+RATE_LIMIT_MAX_BUCKETS = 10_000
 STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 
 logger = logging.getLogger("k_beauty_agent")
 logging.basicConfig(level=logging.INFO, format="%(message)s")
+_rate_limit_lock = Lock()
+_rate_limit_buckets: OrderedDict[str, deque[float]] = OrderedDict()
 
 
 def _build_agent() -> KBeautyAgent:
@@ -73,11 +83,36 @@ agent = _build_agent()
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
+class RecommendationProfileRequest(BaseModel):
+    skin_type: Literal["oily", "dry", "combination", "sensitive", "normal"]
+    concerns: list[
+        Literal[
+            "oil_control",
+            "acne",
+            "clogged_pores",
+            "hydration",
+            "barrier_support",
+            "redness",
+            "hyperpigmentation",
+            "anti_aging",
+            "texture",
+            "dryness",
+        ]
+    ] = Field(default_factory=list, max_length=8)
+    desired_categories: list[Literal["cleanser", "toner", "serum", "moisturizer", "sunscreen", "basic"]] = Field(
+        ..., min_length=1, max_length=6
+    )
+    avoid_ingredients: list[str] = Field(default_factory=list, max_length=12)
+    max_price_krw: int | None = Field(default=None, ge=1_000, le=2_000_000)
+    texture_preference: Literal["dewy", "lightweight", "rich", "gel"] | None = None
+
+
 class RecommendRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=1200)
     limit: int = Field(3, ge=1, le=8)
     use_openai: bool = True
     language: Literal["en", "ko"] = "en"
+    profile: RecommendationProfileRequest | None = None
 
 
 class FeedbackRequest(BaseModel):
@@ -107,7 +142,10 @@ class SelectionRequest(BaseModel):
 
 
 def _session_id(request: Request) -> str:
-    existing = request.cookies.get(SESSION_COOKIE)
+    header_session = request.headers.get(SESSION_HEADER)
+    if header_session and SESSION_ID_PATTERN.fullmatch(header_session) is None:
+        raise HTTPException(status_code=400, detail=f"{SESSION_HEADER} must be a 20-128 character URL-safe token")
+    existing = header_session or request.cookies.get(SESSION_COOKIE)
     return existing or secrets.token_urlsafe(32)
 
 
@@ -127,6 +165,36 @@ def _require_admin(x_admin_token: str | None = Header(default=None)) -> None:
         raise HTTPException(status_code=401, detail="Invalid admin token")
 
 
+def _check_recommendation_rate_limit(request: Request, session_id: str) -> None:
+    now = time.monotonic()
+    window = recommend_rate_limit_window_seconds()
+    limit = recommend_rate_limit_requests()
+    forwarded_for = request.headers.get("x-forwarded-for", "").split(",", 1)[0].strip()
+    client_ip = (forwarded_for or (request.client.host if request.client else "unknown"))[:100]
+    identifiers = (f"ip:{client_ip}", f"session:{hash_session(session_id)}")
+
+    with _rate_limit_lock:
+        buckets: list[deque[float]] = []
+        for identifier in identifiers:
+            bucket = _rate_limit_buckets.setdefault(identifier, deque())
+            while bucket and now - bucket[0] >= window:
+                bucket.popleft()
+            _rate_limit_buckets.move_to_end(identifier)
+            buckets.append(bucket)
+
+        if any(len(bucket) >= limit for bucket in buckets):
+            raise HTTPException(
+                status_code=429,
+                detail="Too many recommendation requests. Please try again shortly.",
+                headers={"Retry-After": str(window)},
+            )
+
+        for bucket in buckets:
+            bucket.append(now)
+        while len(_rate_limit_buckets) > RATE_LIMIT_MAX_BUCKETS:
+            _rate_limit_buckets.popitem(last=False)
+
+
 @app.middleware("http")
 async def structured_logging(request: Request, call_next):
     request_id = request.headers.get("x-request-id", str(uuid.uuid4()))
@@ -142,7 +210,12 @@ async def structured_logging(request: Request, call_next):
         return response
     finally:
         latency_ms = int((time.perf_counter() - started) * 1000)
-        session_id = request.cookies.get(SESSION_COOKIE)
+        header_session = request.headers.get(SESSION_HEADER)
+        session_id = (
+            header_session
+            if header_session and SESSION_ID_PATTERN.fullmatch(header_session)
+            else request.cookies.get(SESSION_COOKIE)
+        )
         payload = {
             "event": "http_request",
             "request_id": request_id,
@@ -305,6 +378,7 @@ def admin_reload(_: None = Depends(_require_admin)) -> dict[str, object]:
 
 
 def _recommend(payload: RecommendRequest, request: Request, response: Response, session_id: str, *, is_follow_up: bool) -> dict[str, object]:
+    _check_recommendation_rate_limit(request, session_id)
     started = time.perf_counter()
     session = store.ensure_session(session_id)
     feedback_rows = store.feedback_for_session(session_id)
@@ -335,6 +409,7 @@ def _recommend(payload: RecommendRequest, request: Request, response: Response, 
         stored_profile=stored_profile,
         recent_queries=recent_queries,
         personalization=personalization,
+        structured_profile=_structured_profile(payload.profile),
     )
     openai_status = "not_used"
     explanation = format_recommendation_text(recommendation, payload.language)
@@ -393,6 +468,15 @@ def _product_source_status() -> dict[str, object]:
     if hasattr(agent.database, "last_source_status"):
         return dict(agent.database.last_source_status)
     return {"product_source": product_source(), "source_used": "curated_csv", "message": "Using curated CSV product database."}
+
+
+def _structured_profile(profile: RecommendationProfileRequest | None) -> dict[str, object] | None:
+    if profile is None:
+        return None
+    cleaned = sanitize_profile_patch(profile.model_dump(exclude_none=True))
+    if profile.max_price_krw is not None:
+        cleaned["sensitivities"] = ["budget_preference"]
+    return cleaned
 
 
 def _selection_payload(session_id: str) -> dict[str, object]:

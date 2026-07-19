@@ -78,9 +78,22 @@ def cookie_samesite() -> str:
 def cors_allow_origins() -> list[str]:
     value = os.getenv(
         "CORS_ALLOW_ORIGINS",
-        "https://yeonwo00.github.io,https://201younghanlee.github.io",
+        (
+            "https://yeonwo00.github.io,"
+            "https://201younghanlee.github.io,"
+            "https://k-beauty-agent.apps.tossmini.com,"
+            "https://k-beauty-agent.private-apps.tossmini.com"
+        ),
     )
     return [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip()]
+
+
+def recommend_rate_limit_requests() -> int:
+    return max(1, min(1_000, int(os.getenv("RECOMMEND_RATE_LIMIT_REQUESTS", "30"))))
+
+
+def recommend_rate_limit_window_seconds() -> int:
+    return max(1, min(3_600, int(os.getenv("RECOMMEND_RATE_LIMIT_WINDOW_SECONDS", "60"))))
 
 
 def _secret_env(name: str, dev_default: str) -> str:

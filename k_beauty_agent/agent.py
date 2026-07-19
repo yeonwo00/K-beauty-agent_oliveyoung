@@ -5,7 +5,7 @@ from pathlib import Path
 from .database import ProductDatabase
 from .llm import HybridExplainer, LLMClient
 from .models import Recommendation
-from .personalization import merge_profiles
+from .personalization import merge_profiles, profile_from_dict
 from .recommender import IngredientHybridRecommender
 from .reviews import summarize_reviews
 from .serializers import similarity_score
@@ -53,8 +53,16 @@ class KBeautyAgent:
         stored_profile: dict | None = None,
         recent_queries: list[str] | None = None,
         personalization: dict[str, set[str]] | None = None,
+        structured_profile: dict | None = None,
     ) -> Recommendation:
-        profile = merge_profiles(stored_profile, query, recent_queries) if stored_profile or recent_queries else analyze_skin_query(query)
+        if structured_profile is not None:
+            profile = profile_from_dict(structured_profile)
+            search_query = " ".join(
+                [*profile.desired_categories, *profile.concerns, *profile.preferred_ingredients]
+            )
+        else:
+            profile = merge_profiles(stored_profile, query, recent_queries) if stored_profile or recent_queries else analyze_skin_query(query)
+            search_query = query
         if not profile.has_minimum_signal:
             return Recommendation(
                 decision="ask_more",
@@ -64,7 +72,7 @@ class KBeautyAgent:
             )
 
         candidates = self.database.search(
-            query,
+            search_query,
             categories=profile.desired_categories,
             concerns=profile.concerns,
             ingredients=profile.preferred_ingredients,
@@ -78,7 +86,7 @@ class KBeautyAgent:
 
         if not top and profile.desired_categories:
             broad_candidates = self.database.search(
-                query,
+                search_query,
                 concerns=profile.concerns,
                 ingredients=profile.preferred_ingredients,
                 limit=max(50, len(self.database.products)),

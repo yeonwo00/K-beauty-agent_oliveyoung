@@ -6,7 +6,7 @@ const config: AppsInTossWebConfigResponse = defineConfig({
     displayName: 'K-Beauty Agent',
     primaryColor: '#3182F6',
     // 앱인토스 콘솔에 로고를 등록한 뒤 콘솔의 이미지 URL로 교체해야 합니다.
-    icon: 'https://k-beauty-agent-lq0v.onrender.com/static/app-icon.png',
+    icon: 'https://k-beauty-recommendation-agent-gafd.onrender.com/static/app-icon.png',
   },
   web: {
     host: 'localhost',

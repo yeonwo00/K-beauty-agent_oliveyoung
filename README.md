@@ -4,9 +4,9 @@ A bilingual K-beauty product recommendation web app built with FastAPI. It combi
 
 ## Live product
 
-- Web app: https://k-beauty-agent-lq0v.onrender.com/
-- API documentation: https://k-beauty-agent-lq0v.onrender.com/docs
-- Health check: https://k-beauty-agent-lq0v.onrender.com/health
+- Web app: https://k-beauty-recommendation-agent-gafd.onrender.com/
+- API documentation: https://k-beauty-recommendation-agent-gafd.onrender.com/docs
+- Health check: https://k-beauty-recommendation-agent-gafd.onrender.com/health
 - GitHub Pages client: https://yeonwo00.github.io/K-beauty-agent_oliveyoung/
 
 ## Apps in Toss miniapp

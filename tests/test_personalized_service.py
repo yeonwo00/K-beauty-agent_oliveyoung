@@ -409,7 +409,7 @@ class PersonalizedServiceUnitTest(unittest.TestCase):
         self.assertIn('addCurrentResultsToSelection("compare")', app_js)
         self.assertIn('addCurrentResultsToSelection("saved")', app_js)
         self.assertIn('await apiJson("/api/profile", { method: "DELETE" })', app_js)
-        self.assertIn('const RENDER_API_BASE_URL = "https://k-beauty-agent-lq0v.onrender.com";', app_js)
+        self.assertIn('const RENDER_API_BASE_URL = "https://k-beauty-recommendation-agent-gafd.onrender.com";', app_js)
         self.assertIn('credentials: "include"', app_js)
         self.assertNotIn("IS_STATIC_DEMO", app_js)
         self.assertIn("state.currentResults = data.results || []", app_js)

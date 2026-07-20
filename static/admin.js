@@ -1,4 +1,4 @@
-const RENDER_API_BASE_URL = "https://k-beauty-agent-lq0v.onrender.com";
+const RENDER_API_BASE_URL = "https://k-beauty-recommendation-agent-gafd.onrender.com";
 const API_BASE_URL = window.location.hostname.endsWith("github.io") ? RENDER_API_BASE_URL : "";
 
 document.addEventListener("DOMContentLoaded", () => {

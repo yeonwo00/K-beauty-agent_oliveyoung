@@ -7,7 +7,7 @@ import type {
   SurveyAnswers,
 } from './types';
 
-const DEFAULT_API_BASE_URL = 'https://k-beauty-agent-lq0v.onrender.com';
+const DEFAULT_API_BASE_URL = 'https://k-beauty-recommendation-agent-gafd.onrender.com';
 const SESSION_STORAGE_KEY = 'kBeautyAgentAnonymousSessionV1';
 const SESSION_PATTERN = /^[A-Za-z0-9_-]{20,128}$/;
 const REQUEST_TIMEOUT_MS = 60_000;

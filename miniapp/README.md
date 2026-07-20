@@ -17,7 +17,7 @@ pnpm dev
 API 주소를 바꾸려면 `.env`의 값을 수정합니다.
 
 ```dotenv
-VITE_API_BASE_URL=https://k-beauty-agent-lq0v.onrender.com
+VITE_API_BASE_URL=https://k-beauty-recommendation-agent-gafd.onrender.com
 ```
 
 ## 앱인토스 번들 만들기
@@ -39,7 +39,7 @@ pnpm build
 - 권한: 없음
 - 기본 색상: `#3182F6`
 
-`brand.icon`은 배포 API의 `https://k-beauty-agent-lq0v.onrender.com/static/app-icon.png`를 가리킵니다. 콘솔에 600×600 PNG 로고를 업로드한 뒤에는 공식 안내에 따라 콘솔에서 복사한 이미지 URL과 `brand.icon`을 동일하게 맞춰 주세요.
+`brand.icon`은 배포 API의 `https://k-beauty-recommendation-agent-gafd.onrender.com/static/app-icon.png`를 가리킵니다. 콘솔에 600×600 PNG 로고를 업로드한 뒤에는 공식 안내에 따라 콘솔에서 복사한 이미지 URL과 `brand.icon`을 동일하게 맞춰 주세요.
 
 QR 테스트 딥링크는 `intoss-private://k-beauty-agent?_deploymentId=<deploymentId>`, 출시 딥링크는 `intoss://k-beauty-agent`입니다. `<deploymentId>`는 `.ait`를 콘솔에 업로드하거나 `ait deploy`를 실행한 뒤 발급된 배포 ID를 사용합니다.
 

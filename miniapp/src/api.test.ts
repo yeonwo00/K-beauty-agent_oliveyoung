@@ -52,7 +52,7 @@ describe('normalizeResponse', () => {
     expect(result.summary).toBe('선택한 조건을 바탕으로 제품 성분과 피부 적합도를 비교했어요.');
     expect(result.items[0].reason).toBe('현재 조건에 맞는 추천이에요.');
     expect(result.items[0].product.imageUrl).toBe(
-      'https://k-beauty-agent-lq0v.onrender.com/static/product.png',
+      'https://k-beauty-recommendation-agent-gafd.onrender.com/static/product.png',
     );
   });
 

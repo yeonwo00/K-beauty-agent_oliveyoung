@@ -1,4 +1,4 @@
-# K-Beauty Agent · Apps in Toss 미니앱
+# K뷰티에이전트 · Apps in Toss 미니앱
 
 기존 K-Beauty Agent 추천 API를 앱인토스 WebView SDK 2.x에서 사용하는 React + TypeScript + Vite 프런트엔드입니다. 로그인이나 쿠키에 의존하지 않고, 익명 세션 토큰을 `X-KBeauty-Session` 헤더로 보냅니다.
 
@@ -34,12 +34,12 @@ pnpm build
 다음 값은 `granite.config.ts`와 동일해야 합니다.
 
 - appName: `k-beauty-agent`
-- 표시 이름: `K-Beauty Agent`
+- 표시 이름: `K뷰티에이전트`
 - 앱 유형: 비게임 (`partner`)
 - 권한: 없음
 - 기본 색상: `#3182F6`
 
-`brand.icon`은 배포 API의 `https://k-beauty-recommendation-agent-gafd.onrender.com/static/app-icon.png`를 가리킵니다. 콘솔에 600×600 PNG 로고를 업로드한 뒤에는 공식 안내에 따라 콘솔에서 복사한 이미지 URL과 `brand.icon`을 동일하게 맞춰 주세요.
+`brand.icon`은 앱인토스 콘솔에 등록한 600×600 PNG 기본 로고의 토스 이미지 URL과 동일하게 유지합니다.
 
 QR 테스트 딥링크는 `intoss-private://k-beauty-agent?_deploymentId=<deploymentId>`, 출시 딥링크는 `intoss://k-beauty-agent`입니다. `<deploymentId>`는 `.ait`를 콘솔에 업로드하거나 `ait deploy`를 실행한 뒤 발급된 배포 ID를 사용합니다.
 

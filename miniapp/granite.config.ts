@@ -3,10 +3,9 @@ import { defineConfig, type AppsInTossWebConfigResponse } from '@apps-in-toss/we
 const config: AppsInTossWebConfigResponse = defineConfig({
   appName: 'k-beauty-agent',
   brand: {
-    displayName: 'K-Beauty Agent',
+    displayName: 'K뷰티에이전트',
     primaryColor: '#3182F6',
-    // 앱인토스 콘솔에 로고를 등록한 뒤 콘솔의 이미지 URL로 교체해야 합니다.
-    icon: 'https://k-beauty-recommendation-agent-gafd.onrender.com/static/app-icon.png',
+    icon: 'https://static.toss.im/appsintoss/60965/3ed9c583-09a5-4e8a-bf0c-36ffe4c86710.png',
   },
   web: {
     host: 'localhost',

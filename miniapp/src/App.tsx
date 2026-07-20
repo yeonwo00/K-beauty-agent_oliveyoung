@@ -493,7 +493,7 @@ function App() {
       <header className="app-header">
         <button type="button" className="brand-button" onClick={goHome} aria-label="추천 설문 홈">
           <span className="brand-mark">K</span>
-          <span>K-Beauty Agent</span>
+          <span>K뷰티에이전트</span>
         </button>
         <button type="button" className="saved-link" onClick={() => navigate('saved')} aria-label={`찜 목록 ${savedItems.length}개`}>
           <HeartIcon filled={screen === 'saved'} />
